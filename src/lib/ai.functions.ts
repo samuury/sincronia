@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { profileGuideline, type Profile } from "./profiles";
 
-const MODEL = "gemini-3.1-flash-lite";
+const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.1-flash-lite";
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: any };
 

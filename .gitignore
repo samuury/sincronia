@@ -17,6 +17,10 @@ lerna-debug.log*
 node_modules
 /node_modules/
 
+# Bun (project uses npm)
+bun.lock
+bunfig.toml
+
 # Build outputs
 dist
 dist-ssr

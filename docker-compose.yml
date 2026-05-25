@@ -1,0 +1,23 @@
+# Apenas para desenvolvimento local.
+# Para produção (Coolify), use o Dockerfile direto — sem compose.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: sincronia-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      # Bind do código-fonte (hot reload).
+      - .:/app
+      # Anonymous volume — preserva o node_modules do container, sem ser
+      # sobrescrito pelo node_modules (vazio ou divergente) do host.
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    stdin_open: true
+    tty: true
