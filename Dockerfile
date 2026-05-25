@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-# ============ Stage 1: dependencies (inclui dev p/ build) ============
+# ============ Stage 1: deps (inclui dev p/ build) ============
 FROM node:22-alpine AS deps
 WORKDIR /app
 
@@ -14,10 +14,17 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Vite/TanStack Start gera .output/server/index.mjs com tudo bundleado (Nitro).
+# Gera dist/client (estáticos) e dist/server/server.js (entry Node).
 RUN npm run build
 
-# ============ Stage 3: runtime (imagem final, pequena) ============
+# ============ Stage 3: prod-deps (apenas deps de runtime, sem dev) ============
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# ============ Stage 4: runtime (imagem final) ============
 FROM node:22-alpine AS runtime
 WORKDIR /app
 
@@ -28,8 +35,10 @@ ENV PORT=3000
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
-COPY --from=build --chown=app:app /app/.output ./.output
+COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules
+COPY --from=build --chown=app:app /app/dist ./dist
+COPY --from=build --chown=app:app /app/package.json ./package.json
 
 EXPOSE 3000
 
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "dist/server/server.js"]
