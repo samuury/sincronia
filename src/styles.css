@@ -1,0 +1,277 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * SincronIA — Design System
+ * Estilo inspirado em Duolingo: verde teal vibrante, botões 3D com sombra inferior,
+ * cantos arredondados, tipografia bold/rounded (Nunito), feedback claro de cores.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap");
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --font-sans: "Nunito", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-shadow: var(--primary-shadow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-shadow: var(--accent-shadow);
+  --color-xp: var(--xp);
+  --color-xp-shadow: var(--xp-shadow);
+  --color-streak: var(--streak);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-shadow: var(--destructive-shadow);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 1rem;
+  /* SincronIA DNA de cores — Off-white + Azul/Roxo (primárias) + Laranja/Verde/Amber/Coral (secundárias) */
+  --background: #F0EEE9;        /* Off-white */
+  --foreground: #1A1A1A;        /* Texto */
+  --card: #F7F5F0;              /* Superfície clara */
+  --card-foreground: #1A1A1A;
+  --popover: #F7F5F0;
+  --popover-foreground: #1A1A1A;
+  /* Azul — primária */
+  --primary: #2F8FFF;
+  --primary-foreground: #FFFFFF;
+  --primary-shadow: #1F6BC4;
+  --secondary: #ECE9F5;
+  --secondary-foreground: #1A1A1A;
+  --muted: #E6E3EE;
+  --muted-foreground: #5C5C5C;
+  /* Roxo — primária (accent: logo, títulos, navegação) */
+  --accent: #A44FF5;
+  --accent-foreground: #FFFFFF;
+  --accent-shadow: #7A2FCC;
+  /* Amber — secundária (XP / recompensa) */
+  --xp: #FFBE00;
+  --xp-shadow: #B88800;
+  /* Laranja — secundária (energia / streak) */
+  --streak: #FF8412;
+  /* Coral — secundária (destrutivo / urgência) */
+  --destructive: #FF5252;
+  --destructive-foreground: #FFFFFF;
+  --destructive-shadow: #B83333;
+  /* Verde — secundária (sucesso) */
+  --success: #2EC96C;
+  --success-foreground: #FFFFFF;
+  --border: #D8D3E5;            /* Borda lilás suave */
+  --input: #D8D3E5;
+  --ring: #A44FF5;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: #F5F3EE;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #A44FF5;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EDEAF5;
+  --sidebar-accent-foreground: #1A1A1A;
+  --sidebar-border: #D9D5E8;
+  --sidebar-ring: #A44FF5;
+}
+
+.dark {
+  --background: #F0EEE9;
+  --foreground: #1A1A1A;
+  --card: #F7F5F0;
+  --card-foreground: #1A1A1A;
+  --popover: #F7F5F0;
+  --popover-foreground: #1A1A1A;
+  --primary: #2F8FFF;
+  --primary-foreground: #FFFFFF;
+  --primary-shadow: #1F6BC4;
+  --secondary: #ECE9F5;
+  --secondary-foreground: #1A1A1A;
+  --muted: #E6E3EE;
+  --muted-foreground: #5C5C5C;
+  --accent: #A44FF5;
+  --accent-foreground: #FFFFFF;
+  --accent-shadow: #7A2FCC;
+  --xp: #FFBE00;
+  --xp-shadow: #B88800;
+  --streak: #FF8412;
+  --destructive: #FF5252;
+  --destructive-foreground: #FFFFFF;
+  --destructive-shadow: #B83333;
+  --success: #2EC96C;
+  --success-foreground: #0A0A08;
+  --border: rgba(139, 126, 216, 0.2);
+  --input: rgba(139, 126, 216, 0.25);
+  --ring: #A44FF5;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #EDEAF5;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #A44FF5;
+  --sidebar-primary-foreground: #0A0A08;
+  --sidebar-accent: #E8E5F0;
+  --sidebar-accent-foreground: #1A1A1A;
+  --sidebar-border: rgba(139, 126, 216, 0.2);
+  --sidebar-ring: #A44FF5;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-weight: 600;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.01em; }
+}
+
+/* Botão 3D estilo Duolingo */
+@layer components {
+  .btn-3d {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3
+           font-bold uppercase tracking-wide text-white select-none cursor-pointer
+           transition-transform active:translate-y-[3px];
+    box-shadow: 0 4px 0 0 var(--btn-shadow, var(--primary-shadow));
+    background-color: var(--btn-bg, var(--primary));
+  }
+  .btn-3d:active { box-shadow: 0 1px 0 0 var(--btn-shadow, var(--primary-shadow)); }
+  .btn-3d:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-3d-primary { --btn-bg: var(--primary); --btn-shadow: var(--primary-shadow); }
+  .btn-3d-accent  { --btn-bg: var(--accent);  --btn-shadow: var(--accent-shadow); }
+  .btn-3d-xp      { --btn-bg: var(--xp);      --btn-shadow: var(--xp-shadow); color: oklch(0.3 0.05 70); }
+  .btn-3d-danger  { --btn-bg: var(--destructive); --btn-shadow: var(--destructive-shadow); }
+  .btn-3d-ghost {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3
+           font-bold uppercase tracking-wide cursor-pointer
+           border-2 border-border bg-card text-foreground
+           transition-transform active:translate-y-[2px];
+    box-shadow: 0 3px 0 0 var(--border);
+  }
+
+  /* Card "option" estilo Duolingo (clicável) */
+  .opt-card {
+    @apply w-full rounded-2xl border-2 border-border bg-card px-5 py-4
+           font-bold text-left text-foreground cursor-pointer
+           transition-all active:translate-y-[2px];
+    box-shadow: 0 3px 0 0 var(--border);
+  }
+  .opt-card:hover { @apply bg-secondary; }
+  .opt-card[data-selected="true"] {
+    border-color: var(--accent);
+    background-color: color-mix(in oklab, var(--accent) 12%, white);
+    box-shadow: 0 3px 0 0 var(--accent-shadow);
+  }
+  .opt-card[data-state="correct"] {
+    border-color: var(--success);
+    background-color: color-mix(in oklab, var(--success) 14%, white);
+    box-shadow: 0 3px 0 0 var(--primary-shadow);
+  }
+  .opt-card[data-state="wrong"] {
+    border-color: var(--destructive);
+    background-color: color-mix(in oklab, var(--destructive) 12%, white);
+    box-shadow: 0 3px 0 0 var(--destructive-shadow);
+  }
+
+  .concept-chip {
+    @apply inline rounded-md px-1.5 py-0.5 font-bold cursor-pointer underline decoration-2 underline-offset-4
+           transition-colors;
+    color: var(--accent);
+    text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  }
+  .concept-chip:hover { background-color: color-mix(in oklab, var(--accent) 12%, transparent); }
+}
+
+/* Mascote Syn — animação suave de respiração + flutuação */
+@keyframes syn-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%      { transform: translateY(-8px) rotate(1deg); }
+}
+@keyframes syn-breath {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+.syn-mascote {
+  animation: syn-float 4s ease-in-out infinite;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 8px 16px color-mix(in oklab, var(--xp) 35%, transparent));
+}
+.syn-mascote-breath {
+  animation: syn-breath 3s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .syn-mascote, .syn-mascote-breath { animation: none; }
+}
+
+/* Scrollbar customizada do cartão de estudos */
+.estudos-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+  scroll-behavior: smooth;
+}
+.estudos-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.estudos-scroll::-webkit-scrollbar-track {
+  background: color-mix(in oklab, var(--border) 60%, transparent);
+  border-radius: 999px;
+  margin: 8px 0;
+}
+.estudos-scroll::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
+  border: 2px solid var(--card);
+}
+.estudos-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-shadow);
+}
