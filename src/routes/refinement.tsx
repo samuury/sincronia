@@ -74,9 +74,9 @@ function Refinement() {
           const res = await getSess({ data: { id: sessionId } });
           if (res.session) {
             setTopic(res.session.topic);
-            if (res.session.route_data) {
-              setRouteData(res.session.route_data as any);
-              setDays((res.session.route_data as any).suggestedTime || 30);
+            if ((res.session as any).route_data) {
+              setRouteData((res.session as any).route_data as any);
+              setDays(((res.session as any).route_data as any).suggestedTime || 30);
               setDidInitialGen(true);
             }
             setPending({
@@ -191,11 +191,12 @@ function Refinement() {
     recognition.start();
   }
 
-  async function generateRoute(silent = false) {
+  async function generateRoute(silent = false, overrideMotivo?: string) {
     if (!pending) return;
     setGeneratingRoute(true);
     try {
-      const finalMotivo = motivo === "outros" ? motivoOutro.trim() || "outros" : motivo;
+      const currentMotivo = overrideMotivo ?? motivo;
+      const finalMotivo = currentMotivo === "outros" ? motivoOutro.trim() || "outros" : currentMotivo;
       const r = await genRoute({
         data: {
           materialText: pending.text ?? "",
@@ -220,7 +221,7 @@ function Refinement() {
             route_data: r,
           }
         });
-        nav({ search: { sessionId: sessData.id }, replace: true });
+        nav({ search: { sessionId: sessData.id } as any, replace: true });
       }
 
       if (!silent) setShowModal(true);
@@ -343,8 +344,12 @@ function Refinement() {
               <select
                 value={motivo}
                 onChange={(e) => {
-                  setMotivo(e.target.value);
+                  const val = e.target.value;
+                  setMotivo(val);
                   setRouteData(null);
+                  if (val !== "outros") {
+                    generateRoute(true, val);
+                  }
                 }}
                 className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -360,6 +365,11 @@ function Refinement() {
                   onChange={(e) => {
                     setMotivoOutro(e.target.value);
                     setRouteData(null);
+                  }}
+                  onBlur={() => {
+                    if (motivoOutro.trim()) {
+                      generateRoute(true, "outros");
+                    }
                   }}
                   placeholder="Escreva seu motivo"
                   className="mt-3 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
@@ -432,7 +442,12 @@ function Refinement() {
                   O tempo deve ser maior que zero para iniciar.
                 </p>
               )}
-              {routeData?.suggestedTime && (
+              {generatingRoute ? (
+                <div className="mt-3 flex w-fit items-center gap-2 rounded-xl border-2 border-muted bg-muted/20 px-3 py-1.5 text-xs font-bold text-muted-foreground">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
+                  Recalculando tempo...
+                </div>
+              ) : routeData?.suggestedTime ? (
                 <div className="mt-3 block w-fit rounded-xl border-2 border-accent/20 bg-accent/5 px-3 py-1.5 text-xs font-bold text-accent">
                   A IA sugeriu {(() => {
                     const h = Math.floor(routeData.suggestedTime / 60);
@@ -442,7 +457,7 @@ function Refinement() {
                     return `${m} minuto${m > 1 ? 's' : ''}`;
                   })()} para esse material.
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 

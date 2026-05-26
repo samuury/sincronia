@@ -290,10 +290,13 @@ export const generateExplanation = createServerFn({ method: "POST" })
           : "intermediário";
     const tempoMinutes = data.plan?.minutes ?? (score < 0.34 ? 60 : score > 0.66 ? 30 : 45);
     const tempo = `${tempoMinutes} minutos`;
+     // Escala proporcional exata: 1.100 caracteres por minuto
+    const targetChars = tempoMinutes * 1100;
+    const targetWords = Math.floor(targetChars / 6); // Estimativa de palavras
+    
+    // Calcula parágrafos dinamicamente (assumindo ~600 caracteres por parágrafo)
+    let minParagraphs = Math.max(1, Math.floor(targetChars / 600));
 
-    // Escala proporcional: pessoa lê ~200 palavras/min, mas estudo envolve pensar/reler → ~100 palavras/min efetivas
-    let targetWords: number;
-    let minParagraphs: number;
     let densityRule: string;
     let expandRule: string;
     let bodyExampleRule: string;
@@ -301,59 +304,47 @@ export const generateExplanation = createServerFn({ method: "POST" })
     let diagramRule: string;
 
     if (tempoMinutes <= 5) {
-      // Ultra-curto (1-5 min): pílula expressa
-      targetWords = 150;
-      minParagraphs = 1;
+      // Ultra-curto (1-5 min)
       densityRule = "ULTRA-RESUMIDO. O aluno tem menos de 5 minutos. Escreva o MÍNIMO ABSOLUTO necessário para transmitir o conceito central.";
       expandRule = `SEJA EXTREMAMENTE BREVE. O aluno escolheu apenas ${tempo}. Dê APENAS a definição central e 1 exemplo rápido. Nada mais. Corte tudo que não for essencial.`;
       bodyExampleRule = "Texto ultra-curto com apenas a essência do conceito e marcação de [[conceitos]].";
       exploreRule = "Vá DIRETO ao conceito principal em poucas frases. Não explore exceções, nuances ou contexto histórico.";
       diagramRule = "NÃO inclua diagramas. O tempo é muito curto para isso.";
     } else if (tempoMinutes <= 15) {
-      // Curto (6-15 min): resumo objetivo
-      targetWords = 400;
-      minParagraphs = 2;
+      // Curto (6-15 min)
       densityRule = "DIRETO, RESUMIDO E SUCINTO. O aluno tem pouco tempo. Vá direto ao ponto, sem enrolação.";
       expandRule = `SEJA OBJETIVO. O aluno escolheu um tempo de estudo CURTO (${tempo}). Sintetize as informações mais vitais, forneça apenas 1 exemplo claro por conceito e vá direto ao ponto.`;
       bodyExampleRule = "Conteúdo resumido, direto ao ponto e objetivo, com marcação de [[conceitos]] essenciais.";
       exploreRule = "Vá direto aos conceitos principais. RESUMA o máximo que puder, focando no núcleo do assunto.";
-      diagramRule = "Se possível, inclua 1 diagrama simples (Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou tabela Markdown) para sintetizar visualmente o conteúdo.";
+      diagramRule = "Se possível, inclua 1 diagrama simples (Tabela Markdown preferencialmente, ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`) para sintetizar visualmente. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas soltas e envolva textos com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"].";
     } else if (tempoMinutes <= 29) {
-      // Médio-curto (16-29 min): explicação moderada
-      targetWords = 800;
-      minParagraphs = 3;
+      // Médio-curto (16-29 min)
       densityRule = "MODERADO. Explique os conceitos com clareza, incluindo exemplos, mas sem se estender demais.";
       expandRule = `Mantenha um equilíbrio entre profundidade e objetividade. O aluno tem ${tempo}, então cubra os pontos principais com bons exemplos, mas não se perca em detalhes secundários.`;
       bodyExampleRule = "Conteúdo moderado com explicações claras, exemplos e marcação de [[conceitos]].";
       exploreRule = "Explique os conceitos principais com profundidade razoável. Inclua 1 exemplo por conceito, mas não se estenda em exceções ou debates.";
-      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). Nunca substitua o diagrama por texto.";
+      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA (Tabela Markdown estruturada ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`). Nunca substitua o diagrama por texto. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas/nós inacabados e envolva textos longos/com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"].";
     } else if (tempoMinutes <= 59) {
-      // Médio (30-59 min): explicação detalhada
-      targetWords = 1500;
-      minParagraphs = 4;
+      // Médio (30-59 min)
       densityRule = "DETALHADO. Explore os conceitos com profundidade, incluindo múltiplos exemplos e contexto.";
       expandRule = `O aluno tem ${tempo}. Aprofunde os argumentos, ofereça 2 exemplos por conceito e inclua contexto relevante.`;
       bodyExampleRule = "Conteúdo detalhado com múltiplos exemplos, contexto e marcação de [[conceitos]] para aprofundamento.";
       exploreRule = "Explore os conceitos com boa profundidade. Inclua variações e contexto, mas mantenha o foco no essencial.";
       diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
     } else if (tempoMinutes <= 119) {
-      // Longo (60-119 min): explicação profunda
-      targetWords = 2500;
-      minParagraphs = 6;
+      // Longo (60-119 min)
       densityRule = "DENSO E PROFUNDO. Explore cada conceito exaustivamente com múltiplos exemplos, contrapontos e contexto histórico.";
-      expandRule = `O tempo estimado é longo (${tempo}). Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito.`;
-      bodyExampleRule = "Conteúdo denso e profundo com marcação de [[conceitos]] para aprofundamento. Múltiplos parágrafos extensos por seção.";
+      expandRule = `O tempo estimado é longo (${tempo}). Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito. NÃO RESUMA.`;
+      bodyExampleRule = "OBRIGATÓRIO: Escreva no mínimo 5 parágrafos extensos. Aprofunde a Teoria, dê Múltiplos Exemplos Práticos e analise Contrapontos em detalhes.";
       exploreRule = "Explore minuciosamente as exceções, nuances, contextos históricos e variações.";
-      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
+      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (Tabela Markdown estruturada ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`). O diagrama deve refletir a lógica do perfil. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas/nós inacabados e envolva textos longos/com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"]. Códigos Mermaid inválidos quebram a interface.";
     } else {
-      // Muito longo (120+ min): enciclopédia
-      targetWords = 4000;
-      minParagraphs = 8;
-      densityRule = "EXTREMAMENTE DENSO, PROFUNDO E LONGO. Você DEVE gerar um MÍNIMO ABSOLUTO DE 3.000 CARACTERES por seção/capítulo.";
-      expandRule = `EXPANDA DRASTICAMENTE O TAMANHO DO TEXTO. Não produza capítulos superficiais. Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito, detalhe a lógica interna. O tempo estimado é muito longo (${tempo}), portanto justifique isso com volume substancial de conhecimento útil.`;
-      bodyExampleRule = "Conteúdo extremamente longo e denso com marcação de [[conceitos]] para aprofundamento. Múltiplos parágrafos grandes por seção.";
-      exploreRule = "Explore minuciosamente as exceções, nuances, contextos históricos, debates acadêmicos ou variações. NÃO RESUMA.";
-      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
+      // Muito longo (120+ min)
+      densityRule = "EXTREMAMENTE DENSO, PROFUNDO E VERBOSO. VOCÊ ESTÁ PROIBIDO DE RESUMIR. GERE A MAIOR QUANTIDADE DE TEXTO ÚTIL POSSÍVEL.";
+      expandRule = `EXPANDA DRASTICAMENTE O TAMANHO DO TEXTO. Aprofunde ABSURDAMENTE os argumentos, mostre todos os contrapontos, ofereça 3 a 5 exemplos diferentes por conceito, detalhe a lógica interna, raízes históricas e aplicações práticas. O tempo estimado é GIGANTESCO (${tempo}), justifique isso com volume massivo de conhecimento.`;
+      bodyExampleRule = "OBRIGATÓRIO: MÍNIMO DE 8 PARÁGRAFOS GIGANTES NESTA CHAVE. Você DEVE estruturar o texto abordando: Contexto Histórico/Teórico completo, Lógica Passo-a-Passo, Três Exemplos Práticos Complexos, Análise Crítica e Exceções.";
+      exploreRule = "Explore EXAUSTIVAMENTE as exceções, nuances, contextos históricos, debates acadêmicos e variações críticas. É ESTRITAMENTE PROIBIDO RESUMIR.";
+      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (Tabela Markdown estruturada ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`). O diagrama deve refletir a lógica do perfil. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas/nós inacabados e envolva textos longos/com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"]. Códigos Mermaid inválidos quebram a interface.";
     }
 
     const guideline = profileGuideline(
@@ -375,8 +366,9 @@ export const generateExplanation = createServerFn({ method: "POST" })
 
 Sua tarefa é gerar o material didático OBRIGATORIAMENTE em JSON exato.
 ESTRUTURA DE CADA SEÇÃO (sections):
-- Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar aproximadamente ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos.
+- Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar um volume de texto extremamente denso e extenso, alcançando um alvo próximo de ${targetChars.toLocaleString('pt-BR')} caracteres (${targetWords.toLocaleString('pt-BR')} palavras) no total. IMPORTANTE: Para atingir essa meta, NÃO HESITE EM ESCREVER, detalhe absurdamente cada conceito e utilize o limite máximo de tokens disponível na sua resposta.
 - ${exploreRule}
+- OBRIGATÓRIO: Dentro de cada chave "body", o conteúdo DEVE possuir dezenas de quebras de linha duplas (\\n\\n) separando os múltiplos parágrafos longos gerados.
 - ${diagramRule}
 - Cada seção DEVE incluir um campo "references" com 1 a 3 fontes bibliográficas relevantes ao conteúdo da seção. As referências NÃO contam no orçamento de palavras do "body". Use formato acadêmico (Autor, Título, Ano) ou cite fontes confiáveis (livros, artigos, sites oficiais). Se o material original não mencionar fontes, cite obras de referência clássicas e amplamente reconhecidas sobre o tema.
 
@@ -400,7 +392,7 @@ Regras:
 - Marque entre [[ ]] de 4 a 10 termos importantes ao longo do texto.
 - Não invente fatos fora do material.
 - O conteúdo de cada "body" (capítulo), da "intro", bem como quaisquer diagramas e exemplos gerados, DEVE seguir estritamente as regras de estilo, ordem, estrutura e proporção do perfil de aprendizado do usuário (${data.profile}) definido na diretriz inicial.
-- As referências bibliográficas são EXTRAS e não devem consumir espaço do conteúdo de estudo. O orçamento de ${targetWords} palavras se aplica SOMENTE ao texto dos "body" e "intro".
+- As referências bibliográficas são EXTRAS e não devem consumir espaço do conteúdo de estudo. O alvo de ${targetChars.toLocaleString('pt-BR')} caracteres se aplica SOMENTE ao texto dos "body" e "intro".
 - ${expandRule}
 - OBRIGATÓRIO: Como a resposta é JSON, você DEVE escapar TODAS as quebras de linha dentro das strings usando \\n. Ao gerar diagramas Mermaid, não quebre a linha literalmente; utilize \\n para separar as linhas do diagrama dentro da string. Também escape aspas duplas (\\") se necessário.
 - Português do Brasil.`,
@@ -532,9 +524,10 @@ Regras:
   * Até 5 minutos: gere EXATAMENTE 1 capítulo (pílula expressa).
   * 6-15 minutos: gere no máximo 2 capítulos.
   * 16-29 minutos: gere 2 a 3 capítulos.
-  * 30-59 minutos: gere 3 a 5 capítulos.
-  * 1-2 horas: gere 4 a 8 capítulos.
-  * Mais de 2 horas: gere 6 a 12 ou mais capítulos para permitir um fracionamento real.`,
+  * 30-59 minutos: gere 3 a 6 capítulos.
+  * 1-2 horas: gere 5 a 10 capítulos.
+  * 2-3 horas: gere 8 a 15 capítulos.
+  * Mais de 3 horas: gere 12 a 20 ou mais capítulos. (Isso é CRUCIAL para forçar um fracionamento massivo).`,
         },
         {
           role: "user",

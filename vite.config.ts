@@ -7,6 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [
     tsConfigPaths(),
+    // @ts-ignore
     tanstackStart({ target: "node-server" }),
     viteReact(),
     tailwindcss(),
