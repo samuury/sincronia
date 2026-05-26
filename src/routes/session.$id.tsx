@@ -82,6 +82,7 @@ function SessionPage() {
 
   const [stage, setStage] = useState<Stage>("loading");
   const [busy, setBusy] = useState(false);
+  const [busyText, setBusyText] = useState<{title: string, desc: string} | null>(null);
   const [material, setMaterial] = useState("");
   const [topic, setTopic] = useState("");
   const [profile, setProfile] = useState<Profile>("sistematico");
@@ -140,6 +141,9 @@ function SessionPage() {
               setCorrectCount(c);
             }
           }
+          if (r.session.report) {
+            setSessionReport(r.session.report);
+          }
           setStage("learn");
           return;
         }
@@ -150,12 +154,15 @@ function SessionPage() {
           return;
         }
 
-        setStage("diag");
+        const routeData = r.session.route_data as any;
+        const chapters = routeData?.chapters || [];
+
         const d = await genDiag({
-          data: { materialText: r.session.material_text!, topic: r.session.topic },
+          data: { materialText: r.session.material_text!, topic: r.session.topic, chapters },
         });
         setDiag(d);
         setDiagAnswers(new Array(d.questions.length).fill(-1));
+        setStage("diag");
       } catch (e: any) {
         toast.error(e.message);
       }
@@ -178,6 +185,7 @@ function SessionPage() {
     setShowProfileModal(false);
     setShowRegenModal(false);
     setShowReduceModal(false);
+    setBusyText({ title: "Adaptando sua aula...", desc: "A Inteligência Artificial está reescrevendo o material conforme o seu pedido." });
     setBusy(true);
     try {
       const rawPlan = sessionStorage.getItem("sincronia:plan");
@@ -226,6 +234,7 @@ function SessionPage() {
 
   async function handleUndo() {
     if (!previousExplanation || !previousProfile) return;
+    setBusyText({ title: "Restaurando aula...", desc: "Voltando para a versão anterior do seu material." });
     setBusy(true);
     try {
       if (explanation) setNextExplanation(explanation);
@@ -250,6 +259,7 @@ function SessionPage() {
 
   async function handleRedo() {
     if (!nextExplanation || !nextProfile) return;
+    setBusyText({ title: "Refazendo aula...", desc: "Avançando para a versão mais recente do seu material." });
     setBusy(true);
     try {
       if (explanation) setPreviousExplanation(explanation);
@@ -323,6 +333,7 @@ function SessionPage() {
       return;
     }
     if (!explanation) return;
+    setBusyText({ title: "Criando seus exercícios...", desc: "A IA está gerando perguntas desafiadoras baseadas no que você acabou de ler." });
     setBusy(true);
     try {
       const v = await genVer({
@@ -364,6 +375,13 @@ function SessionPage() {
 
   async function finishSession() {
     if (!verify) return;
+
+    if (sessionReport) {
+      setStage("done");
+      return;
+    }
+
+    setBusyText({ title: "Avaliando suas respostas...", desc: "Corrigindo o teste e gerando o seu relatório de desempenho final." });
     setBusy(true);
     toast.info("Avaliando suas respostas e gerando o relatório...");
     const score = correctCount / verify.questions.length;
@@ -434,9 +452,14 @@ function SessionPage() {
 
   if (stage === "done") {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <section className="rounded-3xl border-2 border-border bg-card p-10 text-center shadow-[0_8px_0_0_var(--border)] max-w-lg w-full">
-          <img src={logo} alt="SincronIA" className="mx-auto h-48 w-auto drop-shadow-xl" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative">
+        <div className="absolute top-6 left-6">
+          <Link to="/home" className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Voltar ao início
+          </Link>
+        </div>
+        <section className="rounded-3xl border-2 border-border bg-card p-10 text-center shadow-[0_8px_0_0_var(--border)] max-w-xl w-full">
+          <img src={logo} alt="SincronIA" className="mx-auto h-48 w-full object-contain drop-shadow-xl" />
           <h2 className="mt-4 text-5xl font-extrabold text-primary">
             {verScore !== null ? Math.round(verScore * 100) : 0}%
           </h2>
@@ -447,7 +470,7 @@ function SessionPage() {
           </p>
           <div className="mt-6 rounded-2xl bg-primary/10 p-4 border border-primary/20">
             <p className="text-sm font-bold text-primary">
-              Seu relatório de desempenho foi gerado e já está disponível no seu Painel!
+              Seu relatório de desempenho já está disponível no seu Painel!
             </p>
           </div>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -455,7 +478,7 @@ function SessionPage() {
               Reforçar erros
             </button>
             <Link to="/dashboard" className="btn-3d-ghost w-full sm:w-auto">
-              Meu painel
+              Ver relatório
             </Link>
             <Link to="/home" className="btn-3d btn-3d-primary w-full sm:w-auto">
               Novo material
@@ -466,16 +489,18 @@ function SessionPage() {
     );
   }
 
-  if (stage === "loading" && !diag) {
+  if (stage === "loading") {
     return (
       <div className="min-h-screen bg-background">
         <main className="mx-auto flex max-w-3xl flex-col items-center justify-center px-6 py-24 text-center">
           <Loader2 className="h-10 w-10 animate-spin text-accent" />
           <h1 className="mt-6 text-2xl font-extrabold text-accent">
-            Preparando sua trilha…
+            {diag ? "Gerando seu material super denso..." : "Analisando seu conhecimento…"}
           </h1>
           <p className="mt-2 text-sm font-bold text-muted-foreground">
-            A IA está lendo seu material e montando a aula no seu perfil.
+            {diag 
+              ? "A IA está escrevendo capítulos bem aprofundados. Isso pode levar alguns segundos!" 
+              : "A IA está lendo seu material e preparando um quiz rápido para ver o que você já sabe."}
           </p>
         </main>
       </div>
@@ -570,9 +595,9 @@ function SessionPage() {
               {busy ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in-95 duration-300">
                   <Loader2 className="h-10 w-10 animate-spin text-accent" />
-                  <h2 className="mt-6 text-2xl font-extrabold text-accent">Adaptando sua aula...</h2>
+                  <h2 className="mt-6 text-2xl font-extrabold text-accent">{busyText?.title || "Carregando..."}</h2>
                   <p className="mt-2 text-sm font-bold text-muted-foreground">
-                    A Inteligência Artificial está reescrevendo o material conforme o seu pedido.
+                    {busyText?.desc || "Aguarde um instante."}
                   </p>
                 </div>
               ) : mode === "aula" ? (
@@ -580,7 +605,7 @@ function SessionPage() {
                   <p className="text-muted-foreground">Sem capítulos disponíveis.</p>
                 ) : (
                   <>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 pb-4 -mx-6 px-6 md:mx-0 md:px-0 md:flex-wrap md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                       {chapters.map((c, i) => {
                         const active = chapter === i;
                         return (
@@ -590,7 +615,7 @@ function SessionPage() {
                             onClick={() => setChapter(i)}
                             aria-current={active ? "step" : undefined}
                             className={
-                              "rounded-xl border-2 px-3 py-2 text-xs font-extrabold transition-transform active:translate-y-1 active:shadow-none " +
+                              "flex-shrink-0 snap-start rounded-xl border-2 px-4 py-2.5 text-sm font-extrabold transition-transform active:translate-y-1 active:shadow-none " +
                               (active
                                 ? "border-primary bg-primary text-primary-foreground shadow-[0_4px_0_0_var(--primary-shadow)]"
                                 : "border-border bg-card text-foreground shadow-[0_4px_0_0_var(--border)] hover:bg-secondary")
