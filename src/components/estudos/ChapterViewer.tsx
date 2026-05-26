@@ -1,7 +1,8 @@
 import React from "react";
+import { BookOpen } from "lucide-react";
 import { RichText } from "./RichText";
 
-export type Chapter = { title: string; subtitle?: string; body: string };
+export type Chapter = { title: string; subtitle?: string; body: string; references?: string[] };
 
 export function ChapterViewer({
   current,
@@ -35,6 +36,20 @@ export function ChapterViewer({
       <div className="mt-6 whitespace-pre-wrap leading-relaxed text-foreground/85">
         <RichText content={current?.body ?? ""} />
       </div>
+      {current?.references && current.references.length > 0 && (
+        <div className="mt-8 rounded-2xl border border-border bg-secondary/30 p-5">
+          <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+            <BookOpen className="h-3.5 w-3.5" /> Referências Bibliográficas
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {current.references.map((ref, i) => (
+              <li key={i} className="text-xs leading-relaxed text-foreground/70">
+                {ref}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {chapterIndex === totalChapters - 1 && summary && (
         <div className="mt-8 rounded-2xl border-2 border-accent/40 bg-accent/5 p-5">
           <p className="text-xs font-extrabold uppercase tracking-wider text-accent">

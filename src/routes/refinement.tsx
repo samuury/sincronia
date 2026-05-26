@@ -416,6 +416,8 @@ function Refinement() {
                   className="h-[52px] cursor-pointer rounded-xl border-2 border-border bg-card px-4 text-sm font-bold text-foreground transition-colors hover:bg-secondary focus:border-primary focus:outline-none"
                 >
                   <option value="" disabled>Escolher rápido...</option>
+                  <option value="2">2 minutos</option>
+                  <option value="5">5 minutos</option>
                   <option value="15">15 minutos</option>
                   <option value="30">30 minutos</option>
                   <option value="45">45 minutos</option>

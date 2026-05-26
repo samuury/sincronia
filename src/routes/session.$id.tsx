@@ -52,7 +52,7 @@ type Quiz = {
 type Explanation = {
   title: string;
   intro: string;
-  sections: { heading: string; body: string }[];
+  sections: { heading: string; body: string; references?: string[] }[];
   summary: string;
   concepts: string[];
 };
@@ -154,12 +154,29 @@ function SessionPage() {
           return;
         }
 
+        const existingDiag = r.quizzes?.find((q: any) => q.kind === "diagnostic");
+        if (existingDiag) {
+          setDiag({ questions: existingDiag.questions as any });
+          setDiagAnswers(existingDiag.answers || new Array(existingDiag.questions.length).fill(-1));
+          setStage("diag");
+          return;
+        }
+
         const routeData = r.session.route_data as any;
         const chapters = routeData?.chapters || [];
 
         const d = await genDiag({
           data: { materialText: r.session.material_text!, topic: r.session.topic, chapters },
         });
+        
+        await saveQ({
+          data: {
+            session_id: id,
+            kind: "diagnostic",
+            questions: d.questions as any,
+          }
+        });
+
         setDiag(d);
         setDiagAnswers(new Array(d.questions.length).fill(-1));
         setStage("diag");
@@ -173,7 +190,7 @@ function SessionPage() {
     if (!explanation) return [];
     return [
       { title: explanation.title, subtitle: "Introdução", body: explanation.intro },
-      ...explanation.sections.map((s) => ({ title: s.heading, body: s.body })),
+      ...explanation.sections.map((s) => ({ title: s.heading, body: s.body, references: s.references })),
     ].map(c => ({...c, title: c.title.replace(/^(Capítulo|Cap)\s*\d+[\:\-\.]\s*/i, "").trim()}));
   }, [explanation]);
 
@@ -495,11 +512,11 @@ function SessionPage() {
         <main className="mx-auto flex max-w-3xl flex-col items-center justify-center px-6 py-24 text-center">
           <Loader2 className="h-10 w-10 animate-spin text-accent" />
           <h1 className="mt-6 text-2xl font-extrabold text-accent">
-            {diag ? "Gerando seu material super denso..." : "Analisando seu conhecimento…"}
+            {diag ? "Gerando seu material..." : "Analisando seu conhecimento…"}
           </h1>
           <p className="mt-2 text-sm font-bold text-muted-foreground">
             {diag 
-              ? "A IA está escrevendo capítulos bem aprofundados. Isso pode levar alguns segundos!" 
+              ? "Isso pode levar alguns segundos..." 
               : "A IA está lendo seu material e preparando um quiz rápido para ver o que você já sabe."}
           </p>
         </main>
@@ -508,9 +525,15 @@ function SessionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
       {stage === "diag" && diag ? (
-        <main className="mx-auto max-w-3xl px-6 py-24">
+        <>
+          <div className="absolute top-6 left-6">
+            <Link to="/home" className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" /> Voltar ao início
+            </Link>
+          </div>
+          <main className="mx-auto max-w-3xl px-6 py-24">
           <DiagnosticQuiz
             title="Antes de começarmos: o que você já sabe sobre isso?"
             quiz={diag as any}
@@ -520,7 +543,8 @@ function SessionPage() {
             busy={busy}
             ctaLabel="Gerar minha aula"
           />
-        </main>
+          </main>
+        </>
       ) : stage === "learn" && explanation ? (
         <main className="mx-auto max-w-6xl px-6 py-10">
           <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
