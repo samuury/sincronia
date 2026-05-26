@@ -64,6 +64,28 @@ export const createSession = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+
+    // Check session limit (max 3 sessions per user unless unlimited_sessions is true)
+    const { data: prof, error: profError } = await supabase
+      .from("profiles")
+      .select("unlimited_sessions")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profError) throw new Error(profError.message);
+
+    if (!prof?.unlimited_sessions) {
+      const { count, error: countError } = await supabase
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      if (countError) throw new Error(countError.message);
+      if (count !== null && count >= 3) {
+        throw new Error("Você atingiu o limite de 3 estudos. Solicite permissão ao administrador para continuar.");
+      }
+    }
+
     const { data: row, error } = await supabase
       .from("sessions")
       .insert({

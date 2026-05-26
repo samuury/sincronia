@@ -90,6 +90,7 @@ export type Database = {
           phone: string | null
           profile_scores: Json | null
           sessions_count: number
+          unlimited_sessions: boolean
           updated_at: string
         }
         Insert: {
@@ -103,6 +104,7 @@ export type Database = {
           phone?: string | null
           profile_scores?: Json | null
           sessions_count?: number
+          unlimited_sessions?: boolean
           updated_at?: string
         }
         Update: {
@@ -116,6 +118,7 @@ export type Database = {
           phone?: string | null
           profile_scores?: Json | null
           sessions_count?: number
+          unlimited_sessions?: boolean
           updated_at?: string
         }
         Relationships: []
