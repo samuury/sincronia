@@ -238,8 +238,8 @@ function AdminDashboard() {
                               onClick={() => toggleUnlimited(user.id, hasUnlimited)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border ${
                                 hasUnlimited 
-                                  ? "bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200" 
-                                  : "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100"
+                                  ? "bg-success/20 text-success border-success/30 hover:bg-success/30" 
+                                  : "bg-streak/20 text-streak border-streak/30 hover:bg-streak/30"
                               }`}
                             >
                               {hasUnlimited ? "Ilimitado" : "Limitar (3)"}
