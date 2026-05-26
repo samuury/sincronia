@@ -74,9 +74,9 @@ function Refinement() {
           const res = await getSess({ data: { id: sessionId } });
           if (res.session) {
             setTopic(res.session.topic);
-            if (res.session.route_data) {
-              setRouteData(res.session.route_data as any);
-              setDays((res.session.route_data as any).suggestedTime || 30);
+            if ((res.session as any).route_data) {
+              setRouteData((res.session as any).route_data as any);
+              setDays(((res.session as any).route_data as any).suggestedTime || 30);
               setDidInitialGen(true);
             }
             setPending({
@@ -221,7 +221,7 @@ function Refinement() {
             route_data: r,
           }
         });
-        nav({ search: { sessionId: sessData.id }, replace: true });
+        nav({ search: { sessionId: sessData.id } as any, replace: true });
       }
 
       if (!silent) setShowModal(true);

@@ -94,6 +94,7 @@ export const createSession = createServerFn({ method: "POST" })
         material_text: data.material_text,
         profile_used: data.profile_used,
         status: data.status ?? "created",
+        // @ts-ignore
         route_data: data.route_data ?? null,
       })
       .select("id")
@@ -119,6 +120,7 @@ export const updateSessionRoute = createServerFn({ method: "POST" })
       .from("sessions")
       .update({
         topic: data.topic,
+        // @ts-ignore
         route_data: data.route_data,
         status: "planning",
       })

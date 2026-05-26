@@ -134,7 +134,7 @@ function SessionPage() {
             setVerScore(Number(vq.score ?? 0));
             if (vq.answers) {
               setVerAnswers(vq.answers as number[]);
-              setAnswered(new Array(vq.questions.length).fill(true));
+              setAnswered(new Array((vq.questions as any[]).length).fill(true));
               let c = 0;
               (vq.questions as any[]).forEach((q, i) => {
                 if (q.answer === (vq.answers as number[])[i]) c++;
@@ -158,12 +158,12 @@ function SessionPage() {
         const existingDiag = r.quizzes?.find((q: any) => q.kind === "diagnostic");
         if (existingDiag) {
           setDiag({ questions: existingDiag.questions as any });
-          setDiagAnswers(existingDiag.answers || new Array(existingDiag.questions.length).fill(-1));
+          setDiagAnswers((existingDiag.answers as number[]) || new Array((existingDiag.questions as any[]).length).fill(-1));
           setStage("diag");
           return;
         }
 
-        const routeData = r.session.route_data as any;
+        const routeData = (r.session as any).route_data as any;
         const chapters = routeData?.chapters || [];
 
         const d = await genDiag({
