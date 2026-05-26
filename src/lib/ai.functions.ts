@@ -289,6 +289,7 @@ export const generateExplanation = createServerFn({ method: "POST" })
           ? "avançado"
           : "intermediário";
     const tempoMinutes = data.plan?.minutes ?? (score < 0.34 ? 60 : score > 0.66 ? 30 : 45);
+    const tempo = `${tempoMinutes} minutos`;
      // Escala proporcional exata: 1.100 caracteres por minuto
     const targetChars = tempoMinutes * 1100;
     const targetWords = Math.floor(targetChars / 6); // Estimativa de palavras
