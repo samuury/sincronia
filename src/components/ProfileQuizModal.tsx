@@ -152,6 +152,11 @@ export function ProfileQuizModal({
 
           {step === "questions" && q && (
             <div>
+              {qIdx === 0 && (
+                <p className="mb-6 rounded-xl bg-accent/10 p-4 text-sm font-semibold text-accent-foreground border border-accent/20">
+                  Este teste rápido nos ajudará a identificar o seu perfil de aprendizado. Com ele, a Inteligência Artificial vai personalizar e melhorar a didática de todos os conteúdos gerados para você.
+                </p>
+              )}
               <h2 className="text-xl font-extrabold leading-snug text-foreground sm:text-2xl">
                 {q.scenario}
               </h2>
