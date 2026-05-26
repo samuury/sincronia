@@ -64,6 +64,28 @@ export const createSession = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+
+    // Check session limit (max 3 sessions per user unless unlimited_sessions is true)
+    const { data: prof, error: profError } = await supabase
+      .from("profiles")
+      .select("unlimited_sessions")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profError) throw new Error(profError.message);
+
+    if (!prof?.unlimited_sessions) {
+      const { count, error: countError } = await supabase
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      if (countError) throw new Error(countError.message);
+      if (count !== null && count >= 3) {
+        throw new Error("Você atingiu o limite de 3 estudos. Solicite permissão ao administrador para continuar.");
+      }
+    }
+
     const { data: row, error } = await supabase
       .from("sessions")
       .insert({
@@ -72,6 +94,7 @@ export const createSession = createServerFn({ method: "POST" })
         material_text: data.material_text,
         profile_used: data.profile_used,
         status: data.status ?? "created",
+        // @ts-ignore
         route_data: data.route_data ?? null,
       })
       .select("id")
@@ -97,6 +120,7 @@ export const updateSessionRoute = createServerFn({ method: "POST" })
       .from("sessions")
       .update({
         topic: data.topic,
+        // @ts-ignore
         route_data: data.route_data,
         status: "planning",
       })

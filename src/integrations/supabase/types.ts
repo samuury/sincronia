@@ -87,8 +87,10 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          phone: string | null
           profile_scores: Json | null
           sessions_count: number
+          unlimited_sessions: boolean
           updated_at: string
         }
         Insert: {
@@ -99,8 +101,10 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          phone?: string | null
           profile_scores?: Json | null
           sessions_count?: number
+          unlimited_sessions?: boolean
           updated_at?: string
         }
         Update: {
@@ -111,8 +115,10 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          phone?: string | null
           profile_scores?: Json | null
           sessions_count?: number
+          unlimited_sessions?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -164,6 +170,7 @@ export type Database = {
           material_path: string | null
           material_text: string | null
           profile_used: Database["public"]["Enums"]["cognitive_profile"] | null
+          report: string | null
           status: string
           topic: string
           updated_at: string
@@ -177,6 +184,7 @@ export type Database = {
           material_path?: string | null
           material_text?: string | null
           profile_used?: Database["public"]["Enums"]["cognitive_profile"] | null
+          report?: string | null
           status?: string
           topic: string
           updated_at?: string
@@ -190,6 +198,7 @@ export type Database = {
           material_path?: string | null
           material_text?: string | null
           profile_used?: Database["public"]["Enums"]["cognitive_profile"] | null
+          report?: string | null
           status?: string
           topic?: string
           updated_at?: string
