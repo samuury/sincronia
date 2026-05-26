@@ -30,3 +30,7 @@ UPDATE public.profiles p
 SET phone = COALESCE(u.raw_user_meta_data->>'phone', u.phone)
 FROM auth.users u
 WHERE p.id = u.id AND p.phone IS NULL;
+
+-- Add report column to public.sessions
+ALTER TABLE public.sessions ADD COLUMN IF NOT EXISTS report TEXT;
+

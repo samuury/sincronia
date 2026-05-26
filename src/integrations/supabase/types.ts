@@ -167,6 +167,7 @@ export type Database = {
           material_path: string | null
           material_text: string | null
           profile_used: Database["public"]["Enums"]["cognitive_profile"] | null
+          report: string | null
           status: string
           topic: string
           updated_at: string
@@ -180,6 +181,7 @@ export type Database = {
           material_path?: string | null
           material_text?: string | null
           profile_used?: Database["public"]["Enums"]["cognitive_profile"] | null
+          report?: string | null
           status?: string
           topic: string
           updated_at?: string
@@ -193,6 +195,7 @@ export type Database = {
           material_path?: string | null
           material_text?: string | null
           profile_used?: Database["public"]["Enums"]["cognitive_profile"] | null
+          report?: string | null
           status?: string
           topic?: string
           updated_at?: string
