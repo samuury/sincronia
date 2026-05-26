@@ -71,17 +71,27 @@ function AdminDashboard() {
     }
   }, [authenticated]);
 
-  const toggleUnlimited = async (userId: string, currentVal: boolean) => {
+  const toggleUnlimited = async (user: any, currentVal: boolean) => {
     try {
       const newVal = !currentVal;
       const { error } = await adminSupabase
         .from("profiles")
-        .update({ unlimited_sessions: newVal })
-        .eq("id", userId);
+        .upsert({ 
+          id: user.id, 
+          unlimited_sessions: newVal,
+          display_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Usuário"
+        });
 
       if (error) throw error;
       
-      setProfiles(prev => prev.map(p => p.id === userId ? { ...p, unlimited_sessions: newVal } : p));
+      setProfiles(prev => {
+        const exists = prev.some(p => p.id === user.id);
+        if (exists) {
+          return prev.map(p => p.id === user.id ? { ...p, unlimited_sessions: newVal } : p);
+        } else {
+          return [...prev, { id: user.id, unlimited_sessions: newVal, display_name: user.user_metadata?.full_name }];
+        }
+      });
       toast.success(newVal ? "Acesso ilimitado concedido!" : "Acesso ilimitado removido.");
     } catch (err: any) {
       toast.error("Erro ao atualizar permissão: " + err.message);
@@ -235,7 +245,7 @@ function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
-                              onClick={() => toggleUnlimited(user.id, hasUnlimited)}
+                              onClick={() => toggleUnlimited(user, hasUnlimited)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border ${
                                 hasUnlimited 
                                   ? "bg-success/20 text-success border-success/30 hover:bg-success/30" 
