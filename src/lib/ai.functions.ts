@@ -7,8 +7,11 @@ const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.1-flash-lite";
 type ChatMsg = { role: "system" | "user" | "assistant"; content: any };
 
 async function callGateway(messages: ChatMsg[], opts: { json?: boolean } = {}) {
-  const key = process.env.GEMINI_API_KEY?.trim();
-  if (!key) throw new Error("GEMINI_API_KEY not configured");
+  const rawKey = process.env.GEMINI_API_KEY?.trim();
+  if (!rawKey) throw new Error("GEMINI_API_KEY not configured");
+  
+  // Suporta múltiplas chaves separadas por vírgula para balanceamento de carga
+  const keys = rawKey.split(",").map(k => k.trim()).filter(Boolean);
 
   console.log(`[callGateway] Iniciando chamada para o modelo ${MODEL}...`);
   const contents = messages
@@ -45,8 +48,11 @@ async function callGateway(messages: ChatMsg[], opts: { json?: boolean } = {}) {
   let delay = 1500;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    // Sorteia a chave a cada tentativa. Se uma falhar por limite, a próxima tentativa pode pegar outra chave livre.
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    
     try {
-      console.log(`[callGateway] Aguardando fetch... (Tentativa ${attempt}/${MAX_RETRIES})`);
+      console.log(`[callGateway] Aguardando fetch... (Tentativa ${attempt}/${MAX_RETRIES}) usando chave terminada em ...${key.slice(-4)}`);
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`,
         {
@@ -215,15 +221,26 @@ export const extractMaterial = createServerFn({ method: "POST" })
 
 export const generateDiagnostic = createServerFn({ method: "POST" })
   .inputValidator((input) =>
-    z.object({ materialText: z.string().min(2), topic: z.string().optional() }).parse(input)
+    z.object({ 
+      materialText: z.string().min(2), 
+      topic: z.string().optional(),
+      chapters: z.array(z.string()).optional(),
+      numQuestions: z.number().min(1).max(20).optional()
+    }).parse(input)
   )
   .handler(async ({ data }) => {
+    const num = data.chapters?.length || data.numQuestions || 3;
+    
+    const chaptersContext = data.chapters && data.chapters.length > 0 
+      ? `Você deve criar exatamente 1 pergunta para cada um dos seguintes ${data.chapters.length} capítulos que serão estudados (na mesma ordem):\n${data.chapters.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\nA pergunta de cada capítulo deve testar o conhecimento prévio do aluno ESPECIFICAMENTE sobre aquele tópico do roteiro.\n\n`
+      : `Gere EXATAMENTE ${num} perguntas de múltipla escolha (4 opções cada), do mais simples ao mais avançado.\n\n`;
+
     const raw = await callGateway(
       [
         {
           role: "system",
           content:
-            'Você cria um MICRO-DIAGNÓSTICO para medir o nível inicial do aluno sobre o assunto. Gere EXATAMENTE 3 perguntas de múltipla escolha (4 opções cada), do mais simples ao mais avançado. IMPORTANTE: Se o material for muito curto (ex: "gatos fofinhos", "Segunda Guerra"), gere perguntas CONCEITUAIS sobre esse tema para testar o conhecimento de mundo do aluno. NUNCA faça perguntas de gramática, português ou interpretação textual do próprio título, a menos que o tema seja gramática. Responda APENAS JSON: {"questions":[{"q":"...","options":["A","B","C","D"],"answer":0,"why":"explicação curta"}]}',
+            `Você cria um MICRO-DIAGNÓSTICO para medir o nível inicial do aluno sobre o assunto.\n\n${chaptersContext}IMPORTANTE: Se o material for muito curto (ex: "gatos fofinhos", "Segunda Guerra"), gere perguntas CONCEITUAIS sobre esse tema para testar o conhecimento de mundo do aluno. NUNCA faça perguntas de gramática, português ou interpretação textual do próprio título, a menos que o tema seja gramática. Responda APENAS JSON: {"questions":[{"q":"...","options":["A","B","C","D"],"answer":0,"why":"explicação curta"}]}`,
         },
         {
           role: "user",
@@ -298,8 +315,9 @@ export const generateExplanation = createServerFn({ method: "POST" })
 
 Sua tarefa é gerar o material didático OBRIGATORIAMENTE em JSON exato.
 ESTRUTURA DE CADA SEÇÃO (sections):
-- Cada "body" deve conter texto contínuo, EXTRAMENTE DENSO, PROFUNDO E LONGO. O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar no mínimo ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos bem desenvolvidos.
+- Cada "body" (capítulo) deve conter texto contínuo, EXTREMAMENTE DENSO, PROFUNDO E LONGO. Você DEVE gerar um MÍNIMO ABSOLUTO DE 3.000 CARACTERES por seção/capítulo. O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar no mínimo ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos MUITO extensos (garantindo os 3.000 caracteres por "body").
 - Explore minuciosamente as exceções, nuances, contextos históricos, debates acadêmicos ou variações. NÃO RESUMA.
+- No final de CADA "body" (capítulo), inclua OBRIGATORIAMENTE 1 ou 2 perguntas retóricas destacando os erros mais comuns ou confusões que as pessoas costumam fazer sobre aquele tópico específico, instigando o aluno a não cair nessas armadilhas.
 - Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \`\`\`mermaid ... \`\`\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por uma mera descrição em texto.
 
 
@@ -310,7 +328,7 @@ Responda APENAS JSON no formato exato:
   "sections": [
     { 
        "heading": "Título da Seção", 
-       "body": "Conteúdo extremamente longo e denso com marcação de [[conceitos]] para aprofundamento. (Mínimo de ${minParagraphs} parágrafos grandes)."
+       "body": "Conteúdo extremamente longo e denso com marcação de [[conceitos]] para aprofundamento. (MÍNIMO ABSOLUTO de 3.000 caracteres e ${minParagraphs} parágrafos grandes por seção)."
     }
   ],
   "summary": "Fechamento curto e índice remissivo (explicando onde cada conceito foi introduzido).",
