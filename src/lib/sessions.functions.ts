@@ -199,6 +199,10 @@ export const saveQuiz = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase } = context;
+    
+    // Remove o quiz existente do mesmo tipo para sobrescrever
+    await supabase.from("quizzes").delete().eq("session_id", data.session_id).eq("kind", data.kind);
+    
     const { error } = await supabase.from("quizzes").insert({
       session_id: data.session_id,
       kind: data.kind,
