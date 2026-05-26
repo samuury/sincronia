@@ -4,6 +4,7 @@ import { Headphones, RefreshCw, Minimize2, Maximize2, Brain, Undo2, Redo2, Timer
 export function StudySidebar({
   onRegenerate,
   onReduce,
+  onDeepen,
   onChangeProfile,
   onUndo,
   canUndo,
