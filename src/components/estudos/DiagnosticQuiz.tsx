@@ -23,6 +23,9 @@ export function DiagnosticQuiz({
   return (
     <section className="mt-6">
       <h2 className="text-2xl font-extrabold text-accent text-center">{title}</h2>
+      <p className="mt-2 text-center text-sm font-bold text-muted-foreground">
+        Responda a este teste rápido para a inteligência artificial nivelar e melhorar o seu conteúdo de aprendizado.
+      </p>
       <div className="mt-6 space-y-6">
         {quiz.questions.map((q, qi) => (
           <div key={qi} className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)]">
