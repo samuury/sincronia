@@ -330,7 +330,6 @@ Sua tarefa é gerar o material didático OBRIGATORIAMENTE em JSON exato.
 ESTRUTURA DE CADA SEÇÃO (sections):
 - Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar aproximadamente ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos.
 - ${exploreRule}
-- No final de CADA "body" (capítulo), inclua OBRIGATORIAMENTE 1 ou 2 perguntas retóricas destacando os erros mais comuns ou confusões que as pessoas costumam fazer sobre aquele tópico específico, instigando o aluno a não cair nessas armadilhas.
 - Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \`\`\`mermaid ... \`\`\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por uma mera descrição em texto.
 
 
