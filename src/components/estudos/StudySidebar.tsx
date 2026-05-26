@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Headphones, RefreshCw, Minimize2, Brain, Undo2, Redo2, Timer, Play, Pause } from "lucide-react";
+import { Headphones, RefreshCw, Minimize2, Maximize2, Brain, Undo2, Redo2, Timer, Play, Pause } from "lucide-react";
 
 export function StudySidebar({
   onRegenerate,
@@ -12,6 +12,7 @@ export function StudySidebar({
 }: {
   onRegenerate: () => void;
   onReduce?: () => void;
+  onDeepen?: () => void;
   onChangeProfile: () => void;
   onUndo?: () => void;
   canUndo?: boolean;
@@ -40,6 +41,11 @@ export function StudySidebar({
         icon={<Brain className="h-5 w-5" />}
         label="Mudar forma de aprender"
         onClick={onChangeProfile}
+      />
+      <SideButton
+        icon={<Maximize2 className="h-5 w-5" />}
+        label="Aprofundar conteúdo"
+        onClick={onDeepen}
       />
       
       <PomodoroTimer />

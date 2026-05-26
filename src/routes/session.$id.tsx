@@ -94,6 +94,7 @@ function SessionPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showRegenModal, setShowRegenModal] = useState(false);
   const [showReduceModal, setShowReduceModal] = useState(false);
+  const [showDeepenModal, setShowDeepenModal] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Profile>("sistematico");
   const [regenNote, setRegenNote] = useState("");
 
@@ -198,10 +199,11 @@ function SessionPage() {
   const current = chapters[chapter];
   const finished = answered.length > 0 && answered.every((a) => a);
 
-  async function regenerateExplanation(options?: { newProfile?: Profile; reduce?: boolean; note?: string }) {
+  async function regenerateExplanation(options?: { newProfile?: Profile; reduce?: boolean; deepen?: boolean; note?: string }) {
     setShowProfileModal(false);
     setShowRegenModal(false);
     setShowReduceModal(false);
+    setShowDeepenModal(false);
     setBusyText({ title: "Adaptando sua aula...", desc: "A Inteligência Artificial está reescrevendo o material conforme o seu pedido." });
     setBusy(true);
     try {
@@ -210,6 +212,11 @@ function SessionPage() {
 
       if (options?.reduce && plan.minutes) {
         plan.minutes = Math.max(1, Math.floor(plan.minutes / 2));
+      }
+
+      if (options?.deepen && plan.minutes) {
+        plan.minutes = plan.minutes * 2;
+        plan.chatNote = "O aluno pediu para aprofundar muito mais este assunto. Vá além do básico, traga conceitos avançados, ramificações complexas e explore os detalhes com máxima densidade.";
       }
 
       if (options?.note) {
@@ -608,6 +615,7 @@ function SessionPage() {
             <StudySidebar
               onRegenerate={() => setShowRegenModal(true)}
               onReduce={() => setShowReduceModal(true)}
+              onDeepen={() => setShowDeepenModal(true)}
               onChangeProfile={() => setShowProfileModal(true)}
               onUndo={handleUndo}
               canUndo={!!previousExplanation}
@@ -765,6 +773,34 @@ function SessionPage() {
               </button>
               <button
                 onClick={() => setShowReduceModal(false)}
+                disabled={busy}
+                className="btn-3d-ghost w-full"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Aprofundar Conteúdo */}
+      {showDeepenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border-2 border-border bg-card p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <h2 className="text-xl font-extrabold text-accent text-center">Aprofundar conteúdo?</h2>
+            <p className="mt-2 text-sm font-semibold text-muted-foreground text-center">
+              Deseja reescrever esta aula expandindo drasticamente o conteúdo com conceitos avançados e mais detalhes?
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              <button
+                onClick={() => regenerateExplanation({ deepen: true })}
+                disabled={busy}
+                className="btn-3d btn-3d-primary w-full"
+              >
+                {busy ? "Gerando..." : "Sim, aprofundar"}
+              </button>
+              <button
+                onClick={() => setShowDeepenModal(false)}
                 disabled={busy}
                 className="btn-3d-ghost w-full"
               >
