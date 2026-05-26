@@ -512,11 +512,11 @@ function SessionPage() {
         <main className="mx-auto flex max-w-3xl flex-col items-center justify-center px-6 py-24 text-center">
           <Loader2 className="h-10 w-10 animate-spin text-accent" />
           <h1 className="mt-6 text-2xl font-extrabold text-accent">
-            {diag ? "Gerando seu material super denso..." : "Analisando seu conhecimento…"}
+            {diag ? "Gerando seu material..." : "Analisando seu conhecimento…"}
           </h1>
           <p className="mt-2 text-sm font-bold text-muted-foreground">
             {diag 
-              ? "A IA está escrevendo capítulos bem aprofundados. Isso pode levar alguns segundos!" 
+              ? "Isso pode levar alguns segundos..." 
               : "A IA está lendo seu material e preparando um quiz rápido para ver o que você já sabe."}
           </p>
         </main>

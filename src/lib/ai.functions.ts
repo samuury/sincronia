@@ -292,9 +292,22 @@ export const generateExplanation = createServerFn({ method: "POST" })
     const tempo = `${tempoMinutes} minutos`;
     let targetWords = 800;
     let minParagraphs = 3;
+    let densityRule = "EXTREMAMENTE DENSO, PROFUNDO E LONGO. Você DEVE gerar um MÍNIMO ABSOLUTO DE 3.000 CARACTERES por seção/capítulo.";
+    let expandRule = `EXPANDA DRASTICAMENTE O TAMANHO DO TEXTO. Não produza capítulos superficiais. Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito, detalhe a lógica interna. O tempo estimado é longo (${tempo}), portanto justifique isso com volume substancial de conhecimento útil.`;
+    let bodyExampleRule = "Conteúdo extremamente longo e denso com marcação de [[conceitos]] para aprofundamento. (MÍNIMO ABSOLUTO de 3.000 caracteres e ${minParagraphs} parágrafos grandes por seção).";
+    let exploreRule = "Explore minuciosamente as exceções, nuances, contextos históricos, debates acadêmicos ou variações. NÃO RESUMA.";
+
     if (tempoMinutes >= 120) { targetWords = 4000; minParagraphs = 8; }
     else if (tempoMinutes >= 60) { targetWords = 2500; minParagraphs = 6; }
     else if (tempoMinutes >= 30) { targetWords = 1500; minParagraphs = 4; }
+    else if (tempoMinutes <= 15) { 
+       targetWords = 300; 
+       minParagraphs = 1; 
+       densityRule = "DIRETO, RESUMIDO E SUCINTO. O aluno tem pouquíssimo tempo. Vá direto ao ponto, sem enrolação.";
+       expandRule = `SEJA OBJETIVO. O aluno escolheu um tempo de estudo MUITO CURTO (${tempo}). Sintetize as informações mais vitais, forneça apenas 1 exemplo claro e vá direto ao ponto, descartando detalhes menores.`;
+       bodyExampleRule = "Conteúdo resumido, direto ao ponto e objetivo, com marcação de [[conceitos]] essenciais.";
+       exploreRule = "Vá direto aos conceitos principais. RESUMA o máximo que puder, focando no núcleo do assunto sem se perder em exceções e contextos históricos irrelevantes no momento.";
+    }
 
     const guideline = profileGuideline(
       data.profile as Profile,
@@ -315,8 +328,8 @@ export const generateExplanation = createServerFn({ method: "POST" })
 
 Sua tarefa é gerar o material didático OBRIGATORIAMENTE em JSON exato.
 ESTRUTURA DE CADA SEÇÃO (sections):
-- Cada "body" (capítulo) deve conter texto contínuo, EXTREMAMENTE DENSO, PROFUNDO E LONGO. Você DEVE gerar um MÍNIMO ABSOLUTO DE 3.000 CARACTERES por seção/capítulo. O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar no mínimo ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos MUITO extensos (garantindo os 3.000 caracteres por "body").
-- Explore minuciosamente as exceções, nuances, contextos históricos, debates acadêmicos ou variações. NÃO RESUMA.
+- Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar aproximadamente ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos.
+- ${exploreRule}
 - No final de CADA "body" (capítulo), inclua OBRIGATORIAMENTE 1 ou 2 perguntas retóricas destacando os erros mais comuns ou confusões que as pessoas costumam fazer sobre aquele tópico específico, instigando o aluno a não cair nessas armadilhas.
 - Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \`\`\`mermaid ... \`\`\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por uma mera descrição em texto.
 
@@ -328,7 +341,7 @@ Responda APENAS JSON no formato exato:
   "sections": [
     { 
        "heading": "Título da Seção", 
-       "body": "Conteúdo extremamente longo e denso com marcação de [[conceitos]] para aprofundamento. (MÍNIMO ABSOLUTO de 3.000 caracteres e ${minParagraphs} parágrafos grandes por seção)."
+       "body": \`${bodyExampleRule}\`
     }
   ],
   "summary": "Fechamento curto e índice remissivo (explicando onde cada conceito foi introduzido).",
@@ -338,7 +351,7 @@ Responda APENAS JSON no formato exato:
 Regras:
 - Marque entre [[ ]] de 4 a 10 termos importantes ao longo do texto.
 - Não invente fatos fora do material.
-- EXPANDA DRASTICAMENTE O TAMANHO DO TEXTO. Não produza capítulos superficiais. Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito, detalhe a lógica interna. O tempo estimado é longo (${tempo}), portanto justifique isso com volume substancial de conhecimento útil.
+- ${expandRule}
 - OBRIGATÓRIO: Como a resposta é JSON, você DEVE escapar TODAS as quebras de linha dentro das strings usando \\n. Ao gerar diagramas Mermaid, não quebre a linha literalmente; utilize \\n para separar as linhas do diagrama dentro da string. Também escape aspas duplas (\\") se necessário.
 - Português do Brasil.`,
         },
