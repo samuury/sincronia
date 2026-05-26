@@ -52,7 +52,7 @@ type Quiz = {
 type Explanation = {
   title: string;
   intro: string;
-  sections: { heading: string; body: string }[];
+  sections: { heading: string; body: string; references?: string[] }[];
   summary: string;
   concepts: string[];
 };
@@ -190,7 +190,7 @@ function SessionPage() {
     if (!explanation) return [];
     return [
       { title: explanation.title, subtitle: "Introdução", body: explanation.intro },
-      ...explanation.sections.map((s) => ({ title: s.heading, body: s.body })),
+      ...explanation.sections.map((s) => ({ title: s.heading, body: s.body, references: s.references })),
     ].map(c => ({...c, title: c.title.replace(/^(Capítulo|Cap)\s*\d+[\:\-\.]\s*/i, "").trim()}));
   }, [explanation]);
 

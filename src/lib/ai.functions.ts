@@ -378,6 +378,7 @@ ESTRUTURA DE CADA SEÇÃO (sections):
 - Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar aproximadamente ${targetWords} palavras no total, e cada seção deve ter pelo menos ${minParagraphs} parágrafos.
 - ${exploreRule}
 - ${diagramRule}
+- Cada seção DEVE incluir um campo "references" com 1 a 3 fontes bibliográficas relevantes ao conteúdo da seção. As referências NÃO contam no orçamento de palavras do "body". Use formato acadêmico (Autor, Título, Ano) ou cite fontes confiáveis (livros, artigos, sites oficiais). Se o material original não mencionar fontes, cite obras de referência clássicas e amplamente reconhecidas sobre o tema.
 
 
 Responda APENAS JSON no formato exato:
@@ -387,7 +388,8 @@ Responda APENAS JSON no formato exato:
   "sections": [
     { 
        "heading": "Título da Seção", 
-       "body": "${bodyExampleRule}"
+       "body": "${bodyExampleRule}",
+       "references": ["Autor, A. Título da Obra. Editora, Ano.", "Outra fonte relevante."]
     }
   ],
   "summary": "Fechamento curto e índice remissivo (explicando onde cada conceito foi introduzido).",
@@ -397,6 +399,7 @@ Responda APENAS JSON no formato exato:
 Regras:
 - Marque entre [[ ]] de 4 a 10 termos importantes ao longo do texto.
 - Não invente fatos fora do material.
+- As referências bibliográficas são EXTRAS e não devem consumir espaço do conteúdo de estudo. O orçamento de ${targetWords} palavras se aplica SOMENTE ao texto dos "body" e "intro".
 - ${expandRule}
 - OBRIGATÓRIO: Como a resposta é JSON, você DEVE escapar TODAS as quebras de linha dentro das strings usando \\n. Ao gerar diagramas Mermaid, não quebre a linha literalmente; utilize \\n para separar as linhas do diagrama dentro da string. Também escape aspas duplas (\\") se necessário.
 - Português do Brasil.`,
@@ -411,7 +414,7 @@ Regras:
     return parseJSON<{
       title: string;
       intro: string;
-      sections: { heading: string; body: string }[];
+      sections: { heading: string; body: string; references?: string[] }[];
       summary: string;
       concepts: string[];
     }>(raw);
