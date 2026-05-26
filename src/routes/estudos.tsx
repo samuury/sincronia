@@ -86,7 +86,7 @@ function Estudos() {
       });
       const chs: Chapter[] = [
         { title: exp.title, subtitle: "Introdução", body: exp.intro },
-        ...exp.sections.map((s) => ({ title: s.heading, body: s.body })),
+        ...exp.sections.map((s) => ({ title: s.heading, body: s.body, references: s.references })),
       ];
       chs.forEach(c => {
          c.title = c.title.replace(/^(Capítulo|Cap)\s*\d+[\:\-\.]\s*/i, "").trim();
