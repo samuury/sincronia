@@ -316,14 +316,14 @@ export const generateExplanation = createServerFn({ method: "POST" })
       expandRule = `SEJA OBJETIVO. O aluno escolheu um tempo de estudo CURTO (${tempo}). Sintetize as informações mais vitais, forneça apenas 1 exemplo claro por conceito e vá direto ao ponto.`;
       bodyExampleRule = "Conteúdo resumido, direto ao ponto e objetivo, com marcação de [[conceitos]] essenciais.";
       exploreRule = "Vá direto aos conceitos principais. RESUMA o máximo que puder, focando no núcleo do assunto.";
-      diagramRule = "Se possível, inclua 1 diagrama simples (Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou tabela Markdown) para sintetizar visualmente o conteúdo.";
+      diagramRule = "Se possível, inclua 1 diagrama simples (Tabela Markdown preferencialmente, ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`) para sintetizar visualmente. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas soltas e envolva textos com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"].";
     } else if (tempoMinutes <= 29) {
       // Médio-curto (16-29 min)
       densityRule = "MODERADO. Explique os conceitos com clareza, incluindo exemplos, mas sem se estender demais.";
       expandRule = `Mantenha um equilíbrio entre profundidade e objetividade. O aluno tem ${tempo}, então cubra os pontos principais com bons exemplos, mas não se perca em detalhes secundários.`;
       bodyExampleRule = "Conteúdo moderado com explicações claras, exemplos e marcação de [[conceitos]].";
       exploreRule = "Explique os conceitos principais com profundidade razoável. Inclua 1 exemplo por conceito, mas não se estenda em exceções ou debates.";
-      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). Nunca substitua o diagrama por texto.";
+      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA (Tabela Markdown estruturada ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`). Nunca substitua o diagrama por texto. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas/nós inacabados e envolva textos longos/com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"].";
     } else if (tempoMinutes <= 59) {
       // Médio (30-59 min)
       densityRule = "DETALHADO. Explore os conceitos com profundidade, incluindo múltiplos exemplos e contexto.";
@@ -337,14 +337,14 @@ export const generateExplanation = createServerFn({ method: "POST" })
       expandRule = `O tempo estimado é longo (${tempo}). Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito. NÃO RESUMA.`;
       bodyExampleRule = "OBRIGATÓRIO: Escreva no mínimo 5 parágrafos extensos. Aprofunde a Teoria, dê Múltiplos Exemplos Práticos e analise Contrapontos em detalhes.";
       exploreRule = "Explore minuciosamente as exceções, nuances, contextos históricos e variações.";
-      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
+      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (Tabela Markdown estruturada ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`). O diagrama deve refletir a lógica do perfil. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas/nós inacabados e envolva textos longos/com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"]. Códigos Mermaid inválidos quebram a interface.";
     } else {
       // Muito longo (120+ min)
       densityRule = "EXTREMAMENTE DENSO, PROFUNDO E VERBOSO. VOCÊ ESTÁ PROIBIDO DE RESUMIR. GERE A MAIOR QUANTIDADE DE TEXTO ÚTIL POSSÍVEL.";
       expandRule = `EXPANDA DRASTICAMENTE O TAMANHO DO TEXTO. Aprofunde ABSURDAMENTE os argumentos, mostre todos os contrapontos, ofereça 3 a 5 exemplos diferentes por conceito, detalhe a lógica interna, raízes históricas e aplicações práticas. O tempo estimado é GIGANTESCO (${tempo}), justifique isso com volume massivo de conhecimento.`;
       bodyExampleRule = "OBRIGATÓRIO: MÍNIMO DE 8 PARÁGRAFOS GIGANTES NESTA CHAVE. Você DEVE estruturar o texto abordando: Contexto Histórico/Teórico completo, Lógica Passo-a-Passo, Três Exemplos Práticos Complexos, Análise Crítica e Exceções.";
       exploreRule = "Explore EXAUSTIVAMENTE as exceções, nuances, contextos históricos, debates acadêmicos e variações críticas. É ESTRITAMENTE PROIBIDO RESUMIR.";
-      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
+      diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (Tabela Markdown estruturada ou Mermaid estrito \\`\\`\\`mermaid ... \\`\\`\\`). O diagrama deve refletir a lógica do perfil. ATENÇÃO: Se usar Mermaid, NUNCA deixe setas/nós inacabados e envolva textos longos/com símbolos sempre entre aspas duplas, ex: A[\"texto (especial) ∘\"]. Códigos Mermaid inválidos quebram a interface.";
     }
 
     const guideline = profileGuideline(
