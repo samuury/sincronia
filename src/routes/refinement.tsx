@@ -179,7 +179,8 @@ function Refinement() {
     };
 
     recognition.onerror = (event: any) => {
-      toast.error("Erro no reconhecimento de voz.");
+      console.error("Speech error", event.error);
+      toast.error("Erro na voz: " + event.error);
       setIsRecording(false);
     };
 
@@ -371,34 +372,58 @@ function Refinement() {
           <div className="grid items-start gap-4 md:grid-cols-[180px_1fr]">
             <label className="text-xl font-extrabold">Sugestão de tempo</label>
             <div>
-              <div className="inline-flex items-center gap-4 rounded-xl border-2 border-border bg-white px-4 py-2">
-                <button
-                  type="button"
-                  onClick={() => setDays((d) => Math.max(0, Number(d) - 1))}
-                  className="rounded-lg p-2 hover:bg-secondary"
-                  aria-label="Diminuir minutos"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <div className="flex items-baseline gap-1">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Horas */}
+                <div className="flex items-baseline gap-1 rounded-xl border-2 border-border bg-white px-4 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                   <input
                     type="number"
                     min="0"
-                    max="999"
-                    value={days}
-                    onChange={(e) => setDays(e.target.value === "" ? "" : Number(e.target.value))}
-                    className="w-16 text-center text-xl font-extrabold focus:outline-none bg-transparent"
+                    max="24"
+                    value={days === "" ? "" : Math.floor(Number(days) / 60)}
+                    onChange={(e) => {
+                      const h = Number(e.target.value) || 0;
+                      const m = days === "" ? 0 : Number(days) % 60;
+                      setDays(h * 60 + m);
+                    }}
+                    className="w-12 text-center text-xl font-extrabold bg-transparent focus:outline-none"
                   />
-                  <span className="text-xl font-extrabold text-muted-foreground">min</span>
+                  <span className="text-sm font-extrabold text-muted-foreground">h</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDays((d) => Math.min(365, Number(d) + 1))}
-                  className="rounded-lg p-2 hover:bg-secondary"
-                  aria-label="Aumentar minutos"
+                
+                {/* Minutos */}
+                <div className="flex items-baseline gap-1 rounded-xl border-2 border-border bg-white px-4 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={days === "" ? "" : Number(days) % 60}
+                    onChange={(e) => {
+                      const h = days === "" ? 0 : Math.floor(Number(days) / 60);
+                      const m = Number(e.target.value) || 0;
+                      setDays(h * 60 + m);
+                    }}
+                    className="w-12 text-center text-xl font-extrabold bg-transparent focus:outline-none"
+                  />
+                  <span className="text-sm font-extrabold text-muted-foreground">min</span>
+                </div>
+
+                {/* Botão de escolher (Select) */}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) setDays(Number(e.target.value));
+                  }}
+                  className="h-[52px] cursor-pointer rounded-xl border-2 border-border bg-card px-4 text-sm font-bold text-foreground transition-colors hover:bg-secondary focus:border-primary focus:outline-none"
                 >
-                  <Plus className="h-4 w-4" />
-                </button>
+                  <option value="" disabled>Escolher rápido...</option>
+                  <option value="15">15 minutos</option>
+                  <option value="30">30 minutos</option>
+                  <option value="45">45 minutos</option>
+                  <option value="60">1 hora</option>
+                  <option value="90">1h 30min</option>
+                  <option value="120">2 horas</option>
+                  <option value="180">3 horas</option>
+                </select>
               </div>
               {days === 0 && (
                 <p className="mt-2 text-xs font-bold text-destructive">
@@ -407,7 +432,13 @@ function Refinement() {
               )}
               {routeData?.suggestedTime && (
                 <div className="mt-3 block w-fit rounded-xl border-2 border-accent/20 bg-accent/5 px-3 py-1.5 text-xs font-bold text-accent">
-                  A IA sugeriu {routeData.suggestedTime} minutos para esse material.
+                  A IA sugeriu {(() => {
+                    const h = Math.floor(routeData.suggestedTime / 60);
+                    const m = routeData.suggestedTime % 60;
+                    if (h > 0 && m > 0) return `${h} hora${h > 1 ? 's' : ''} e ${m} minuto${m > 1 ? 's' : ''}`;
+                    if (h > 0) return `${h} hora${h > 1 ? 's' : ''}`;
+                    return `${m} minuto${m > 1 ? 's' : ''}`;
+                  })()} para esse material.
                 </div>
               )}
             </div>
@@ -487,7 +518,7 @@ function Refinement() {
       {/* Modal Resumo Roteiro */}
       {showModal && routeData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border-2 border-border bg-card p-6 shadow-[0_8px_0_0_var(--border)] animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-lg rounded-3xl border-2 border-border bg-card p-6 shadow-[0_8px_0_0_var(--border)] animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {generatingRoute ? (
               <div className="py-12 flex flex-col items-center justify-center text-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
