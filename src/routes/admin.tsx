@@ -14,20 +14,40 @@ function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [averageScore, setAverageScore] = useState<number>(0);
 
   useEffect(() => {
     if (authenticated) {
-      const fetchUsers = async () => {
+      const fetchData = async () => {
         setLoading(true);
-        const { data, error } = await adminSupabase.auth.admin.listUsers();
-        if (error) {
-          toast.error("Erro ao buscar usuários: " + error.message);
+        
+        // Buscar usuários
+        const { data: usersData, error: usersError } = await adminSupabase.auth.admin.listUsers();
+        if (usersError) {
+          toast.error("Erro ao buscar usuários: " + usersError.message);
         } else {
-          setUsers(data.users || []);
+          setUsers(usersData.users || []);
         }
+
+        // Buscar sessões para calcular a média de acertos
+        const { data: sessionsData, error: sessionsError } = await adminSupabase
+          .from("sessions")
+          .select("final_score")
+          .not("final_score", "is", null);
+        
+        if (sessionsError) {
+          toast.error("Erro ao buscar sessões: " + sessionsError.message);
+        } else if (sessionsData && sessionsData.length > 0) {
+          const validScores = sessionsData.filter(s => s.final_score !== null);
+          if (validScores.length > 0) {
+            const sum = validScores.reduce((acc, curr) => acc + (curr.final_score as number), 0);
+            setAverageScore(sum / validScores.length);
+          }
+        }
+
         setLoading(false);
       };
-      fetchUsers();
+      fetchData();
     }
   }, [authenticated]);
 
@@ -118,8 +138,8 @@ function AdminDashboard() {
               <Activity className="h-5 w-5" />
               <h3 className="font-extrabold text-sm uppercase tracking-wide">Média de Acertos</h3>
             </div>
-            <p className="text-4xl font-extrabold text-foreground">0%</p>
-            <p className="text-xs font-bold text-muted-foreground mt-2">Aguardando conexão com BD</p>
+            <p className="text-4xl font-extrabold text-foreground">{loading ? "..." : `${Math.round(averageScore * 100)}%`}</p>
+            <p className="text-xs font-bold text-muted-foreground mt-2">Média global das sessões</p>
           </div>
         </div>
 
