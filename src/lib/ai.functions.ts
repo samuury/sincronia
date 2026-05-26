@@ -399,6 +399,7 @@ Responda APENAS JSON no formato exato:
 Regras:
 - Marque entre [[ ]] de 4 a 10 termos importantes ao longo do texto.
 - Não invente fatos fora do material.
+- O conteúdo de cada "body" (capítulo), da "intro", bem como quaisquer diagramas e exemplos gerados, DEVE seguir estritamente as regras de estilo, ordem, estrutura e proporção do perfil de aprendizado do usuário (${data.profile}) definido na diretriz inicial.
 - As referências bibliográficas são EXTRAS e não devem consumir espaço do conteúdo de estudo. O orçamento de ${targetWords} palavras se aplica SOMENTE ao texto dos "body" e "intro".
 - ${expandRule}
 - OBRIGATÓRIO: Como a resposta é JSON, você DEVE escapar TODAS as quebras de linha dentro das strings usando \\n. Ao gerar diagramas Mermaid, não quebre a linha literalmente; utilize \\n para separar as linhas do diagrama dentro da string. Também escape aspas duplas (\\") se necessário.
