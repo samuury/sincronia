@@ -87,6 +87,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          phone: string | null
           profile_scores: Json | null
           sessions_count: number
           updated_at: string
@@ -99,6 +100,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          phone?: string | null
           profile_scores?: Json | null
           sessions_count?: number
           updated_at?: string
@@ -111,6 +113,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          phone?: string | null
           profile_scores?: Json | null
           sessions_count?: number
           updated_at?: string
