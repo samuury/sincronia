@@ -335,14 +335,14 @@ export const generateExplanation = createServerFn({ method: "POST" })
       // Longo (60-119 min)
       densityRule = "DENSO E PROFUNDO. Explore cada conceito exaustivamente com múltiplos exemplos, contrapontos e contexto histórico.";
       expandRule = `O tempo estimado é longo (${tempo}). Aprofunde argumentos, mostre contrapontos, ofereça 2 a 3 exemplos diferentes para o mesmo conceito. NÃO RESUMA.`;
-      bodyExampleRule = "Conteúdo denso e profundo com marcação de [[conceitos]] para aprofundamento. Múltiplos parágrafos extensos por seção.";
+      bodyExampleRule = "OBRIGATÓRIO: Escreva no mínimo 5 parágrafos extensos. Aprofunde a Teoria, dê Múltiplos Exemplos Práticos e analise Contrapontos em detalhes.";
       exploreRule = "Explore minuciosamente as exceções, nuances, contextos históricos e variações.";
       diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
     } else {
       // Muito longo (120+ min)
       densityRule = "EXTREMAMENTE DENSO, PROFUNDO E VERBOSO. VOCÊ ESTÁ PROIBIDO DE RESUMIR. GERE A MAIOR QUANTIDADE DE TEXTO ÚTIL POSSÍVEL.";
       expandRule = `EXPANDA DRASTICAMENTE O TAMANHO DO TEXTO. Aprofunde ABSURDAMENTE os argumentos, mostre todos os contrapontos, ofereça 3 a 5 exemplos diferentes por conceito, detalhe a lógica interna, raízes históricas e aplicações práticas. O tempo estimado é GIGANTESCO (${tempo}), justifique isso com volume massivo de conhecimento.`;
-      bodyExampleRule = "Conteúdo extremamente longo, denso e exaustivo com marcação de [[conceitos]] para aprofundamento. Múltiplos parágrafos enormes por seção.";
+      bodyExampleRule = "OBRIGATÓRIO: MÍNIMO DE 8 PARÁGRAFOS GIGANTES NESTA CHAVE. Você DEVE estruturar o texto abordando: Contexto Histórico/Teórico completo, Lógica Passo-a-Passo, Três Exemplos Práticos Complexos, Análise Crítica e Exceções.";
       exploreRule = "Explore EXAUSTIVAMENTE as exceções, nuances, contextos históricos, debates acadêmicos e variações críticas. É ESTRITAMENTE PROIBIDO RESUMIR.";
       diagramRule = "Em pelo menos 1 seção, inclua um DIAGRAMA OBRIGATÓRIO (em sintaxe Mermaid \\`\\`\\`mermaid ... \\`\\`\\` ou Tabela Markdown estruturada). O diagrama deve refletir a lógica do perfil do usuário. Nunca substitua o diagrama por texto.";
     }
@@ -366,8 +366,9 @@ export const generateExplanation = createServerFn({ method: "POST" })
 
 Sua tarefa é gerar o material didático OBRIGATORIAMENTE em JSON exato.
 ESTRUTURA DE CADA SEÇÃO (sections):
-- Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar um volume de texto extremamente denso e extenso, alcançando um alvo próximo de ${targetChars.toLocaleString('pt-BR')} caracteres (${targetWords.toLocaleString('pt-BR')} palavras) no total. IMPORTANTE: Para atingir essa meta, NÃO HESITE EM ESCREVER, detalhe absurdamente cada conceito.
+- Cada "body" (capítulo) deve conter texto contínuo, ${densityRule} O usuário solicitou um estudo de ${tempo}. Para suprir isso, você deve gerar um volume de texto extremamente denso e extenso, alcançando um alvo próximo de ${targetChars.toLocaleString('pt-BR')} caracteres (${targetWords.toLocaleString('pt-BR')} palavras) no total. IMPORTANTE: Para atingir essa meta, NÃO HESITE EM ESCREVER, detalhe absurdamente cada conceito e utilize o limite máximo de tokens disponível na sua resposta.
 - ${exploreRule}
+- OBRIGATÓRIO: Dentro de cada chave "body", o conteúdo DEVE possuir dezenas de quebras de linha duplas (\\n\\n) separando os múltiplos parágrafos longos gerados.
 - ${diagramRule}
 - Cada seção DEVE incluir um campo "references" com 1 a 3 fontes bibliográficas relevantes ao conteúdo da seção. As referências NÃO contam no orçamento de palavras do "body". Use formato acadêmico (Autor, Título, Ano) ou cite fontes confiáveis (livros, artigos, sites oficiais). Se o material original não mencionar fontes, cite obras de referência clássicas e amplamente reconhecidas sobre o tema.
 
