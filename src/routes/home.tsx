@@ -301,6 +301,10 @@ function Landing() {
               </button>
               </div>
             </div>
+            
+            <p className="mt-3 text-center text-sm font-bold text-primary">
+              ✨ Novidade: Claude integrado
+            </p>
           </section>
 
           <section className="flex flex-col items-center justify-between rounded-3xl border-2 border-border p-8 text-center shadow-[0_6px_0_0_var(--border)] bg-[#f1efea]">

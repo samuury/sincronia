@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Headphones, RefreshCw, Minimize2, Maximize2, Brain, Undo2, Redo2, Timer, Play, Pause } from "lucide-react";
+import { Headphones, RefreshCw, Minimize2, Maximize2, Brain, Undo2, Redo2, Timer, Play, Pause, PenLine } from "lucide-react";
 
 export function StudySidebar({
   onRegenerate,
@@ -10,6 +10,7 @@ export function StudySidebar({
   canUndo,
   onRedo,
   canRedo,
+  onOpenNotes,
 }: {
   onRegenerate: () => void;
   onReduce?: () => void;
@@ -19,9 +20,17 @@ export function StudySidebar({
   canUndo?: boolean;
   onRedo?: () => void;
   canRedo?: boolean;
+  onOpenNotes?: () => void;
 }) {
   return (
     <aside className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-4 md:flex-col md:overflow-visible md:pb-0 md:sticky md:top-6 -mx-6 px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {onOpenNotes && (
+        <SideButton
+          icon={<PenLine className="h-5 w-5" />}
+          label="Anotações"
+          onClick={onOpenNotes}
+        />
+      )}
       <SideButton
         icon={<RefreshCw className="h-5 w-5" />}
         label="Me explica de novo"

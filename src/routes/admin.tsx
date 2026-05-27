@@ -17,6 +17,12 @@ function AdminDashboard() {
   const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [averageScore, setAverageScore] = useState<number>(0);
+  const [averageDiagScore, setAverageDiagScore] = useState<number>(0);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userSessions, setUserSessions] = useState<any[]>([]);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [sessionContent, setSessionContent] = useState<any>(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     if (authenticated) {
@@ -44,25 +50,39 @@ function AdminDashboard() {
         // Buscar todas as sessões para calcular estatísticas reais e precisas
         const { data: sessionsData, error: sessionsError } = await adminSupabase
           .from("sessions")
-          .select("id, user_id, final_score");
+          .select("id, user_id, diag_score, final_score");
         
         if (sessionsError) {
           toast.error("Erro ao buscar sessões: " + sessionsError.message);
         } else if (sessionsData) {
           const counts: Record<string, number> = {};
-          let sum = 0;
-          let countWithScore = 0;
+          let sumFinal = 0;
+          let countWithFinal = 0;
+          let sumDiag = 0;
+          let countWithDiag = 0;
+          
+          // Mapeia usuários ilimitados (testers/admins) para não poluir as médias
+          const unlimitedUsers = new Set((profilesData || []).filter(p => p.unlimited_sessions).map(p => p.id));
           
           sessionsData.forEach(s => {
             counts[s.user_id] = (counts[s.user_id] || 0) + 1;
-            if (s.final_score !== null) {
-              sum += Number(s.final_score);
-              countWithScore++;
+            
+            // Ignora métricas de desempenho se o usuário tem permissão ilimitada
+            if (unlimitedUsers.has(s.user_id)) return;
+            // Só computa para a Média de Evolução se o aluno fez AMBOS os quizzes (inicial e final)
+            // e ignoramos se a nota for zero (que geralmente indica quiz não feito/abandonado)
+            if (s.diag_score && s.final_score && Number(s.diag_score) > 0 && Number(s.final_score) > 0) {
+              sumFinal += Number(s.final_score);
+              sumDiag += Number(s.diag_score);
+              // Como exigimos ambos, os contadores serão iguais
+              countWithFinal++;
+              countWithDiag++;
             }
           });
           
           setSessionCounts(counts);
-          setAverageScore(countWithScore > 0 ? sum / countWithScore : 0);
+          setAverageScore(countWithFinal > 0 ? sumFinal / countWithFinal : 0);
+          setAverageDiagScore(countWithDiag > 0 ? sumDiag / countWithDiag : 0);
         }
 
         setLoading(false);
@@ -96,6 +116,58 @@ function AdminDashboard() {
     } catch (err: any) {
       toast.error("Erro ao atualizar permissão: " + err.message);
     }
+  };
+
+  const openUserModal = async (user: any) => {
+    setSelectedUser(user);
+    setModalLoading(true);
+    setUserSessions([]);
+    setSelectedSession(null);
+    setSessionContent(null);
+    
+    const { data, error } = await adminSupabase
+      .from("sessions")
+      .select("id, topic, final_score, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+      
+    if (error) toast.error("Erro ao buscar sessões: " + error.message);
+    else setUserSessions(data || []);
+    
+    setModalLoading(false);
+  };
+
+  const openSessionContent = async (session: any) => {
+    setSelectedSession(session);
+    setModalLoading(true);
+    setSessionContent(null);
+
+    const { data: sData, error: sError } = await adminSupabase
+      .from("sessions")
+      .select("material_text")
+      .eq("id", session.id)
+      .single();
+      
+    const { data: eData, error: eError } = await adminSupabase
+      .from("explanations")
+      .select("content")
+      .eq("session_id", session.id)
+      .single();
+
+    if (sError) toast.error("Erro ao buscar material: " + sError.message);
+    if (eError && eError.code !== 'PGRST116') toast.error("Erro ao buscar aula: " + eError.message);
+    
+    setSessionContent({
+      materialText: sData?.material_text || "Sem texto original.",
+      explanation: eData?.content || null
+    });
+    
+    setModalLoading(false);
+  };
+
+  const closeModals = () => {
+    if (selectedSession) setSelectedSession(null);
+    else setSelectedUser(null);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -181,12 +253,24 @@ function AdminDashboard() {
           </div>
 
           <div className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)]">
-            <div className="flex items-center gap-3 text-success mb-2">
+            <div className="flex items-center gap-3 text-success mb-3">
               <Activity className="h-5 w-5" />
-              <h3 className="font-extrabold text-sm uppercase tracking-wide">Média de Acertos</h3>
+              <h3 className="font-extrabold text-sm uppercase tracking-wide">Média de Evolução</h3>
             </div>
-            <p className="text-4xl font-extrabold text-foreground">{loading ? "..." : `${Math.round(averageScore * 100)}%`}</p>
-            <p className="text-xs font-bold text-muted-foreground mt-2">Média global das sessões</p>
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-4xl font-extrabold text-muted-foreground">{loading ? "..." : `${Math.round(averageDiagScore * 100)}%`}</p>
+                <p className="text-xs font-bold text-muted-foreground mt-1">Diagnóstico (Antes)</p>
+              </div>
+              <div className="text-3xl text-muted-foreground/30 font-bold mb-3">→</div>
+              <div className="text-right">
+                <p className="text-4xl font-extrabold text-success">{loading ? "..." : `${Math.round(averageScore * 100)}%`}</p>
+                <p className="text-xs font-bold text-muted-foreground mt-1">Verificação (Depois)</p>
+              </div>
+            </div>
+            <p className="text-xs font-bold text-muted-foreground mt-4 text-center border-t-2 border-dashed border-border/50 pt-3">
+              Média global da plataforma
+            </p>
           </div>
         </div>
 
@@ -204,19 +288,20 @@ function AdminDashboard() {
                     <th className="px-6 py-4 font-extrabold text-muted-foreground">Estudos</th>
                     <th className="px-6 py-4 font-extrabold text-muted-foreground">Perfil de Aprendizado</th>
                     <th className="px-6 py-4 font-extrabold text-muted-foreground text-center">Permissão</th>
+                    <th className="px-6 py-4 font-extrabold text-muted-foreground text-center">Sessões</th>
                     <th className="px-6 py-4 font-extrabold text-muted-foreground">Data Cadastro</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground font-bold">
+                      <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground font-bold">
                         Carregando usuários...
                       </td>
                     </tr>
                   ) : users.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground font-bold">
+                      <td colSpan={8} className="px-6 py-10 text-center text-muted-foreground font-bold">
                         Nenhum usuário encontrado.
                       </td>
                     </tr>
@@ -255,6 +340,14 @@ function AdminDashboard() {
                               {hasUnlimited ? "Ilimitado" : "Limitar (3)"}
                             </button>
                           </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => openUserModal(user)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border bg-accent/10 text-accent border-accent/20 hover:bg-accent/20 hover:border-accent/40"
+                            >
+                              Ver Histórico
+                            </button>
+                          </td>
                           <td className="px-6 py-4 text-sm">{new Date(user.created_at).toLocaleDateString("pt-BR")}</td>
                         </tr>
                       );
@@ -266,6 +359,73 @@ function AdminDashboard() {
           </div>
         </section>
       </main>
+
+      {/* Modais */}
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-6">
+          <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border-2 border-border bg-card shadow-[0_8px_0_0_var(--border)] overflow-hidden">
+            <header className="flex items-center justify-between border-b-2 border-border p-6 bg-secondary/50">
+              <div>
+                <h2 className="text-xl font-extrabold text-foreground">
+                  {selectedSession ? `Aula: ${selectedSession.topic || "Sem Tópico"}` : `Histórico de ${selectedUser.user_metadata?.full_name || selectedUser.email}`}
+                </h2>
+              </div>
+              <button onClick={closeModals} className="flex items-center justify-center rounded-xl bg-secondary p-2 text-muted-foreground hover:text-foreground transition-colors">
+                <span className="sr-only">Fechar</span>
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {modalLoading ? (
+                <div className="flex justify-center py-10"><span className="text-muted-foreground font-bold">Carregando dados...</span></div>
+              ) : selectedSession && sessionContent ? (
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-lg font-extrabold text-accent mb-2">Material Original</h3>
+                    <div className="rounded-2xl border-2 border-border bg-secondary/20 p-4 text-sm text-foreground max-h-60 overflow-y-auto whitespace-pre-wrap font-mono">
+                      {sessionContent.materialText}
+                    </div>
+                  </div>
+                  {sessionContent.explanation ? (
+                    <div>
+                      <h3 className="text-lg font-extrabold text-accent mb-2">Aula Gerada (JSON)</h3>
+                      <div className="rounded-2xl border-2 border-border bg-secondary/20 p-4 text-sm text-foreground max-h-[500px] overflow-y-auto whitespace-pre-wrap font-mono">
+                        {JSON.stringify(sessionContent.explanation, null, 2)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground font-bold py-4">A aula ainda não foi gerada ou foi interrompida antes da conclusão.</div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userSessions.length === 0 ? (
+                    <div className="text-center text-muted-foreground font-bold py-10">Nenhuma sessão encontrada para este usuário.</div>
+                  ) : (
+                    userSessions.map(session => (
+                      <div key={session.id} className="flex items-center justify-between rounded-2xl border-2 border-border p-4 hover:border-accent/50 transition-colors">
+                        <div>
+                          <h4 className="font-bold text-foreground">{session.topic || "Sem Tópico"}</h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(session.created_at).toLocaleDateString("pt-BR")} • Nota do Quiz: {session.final_score !== null ? `${Math.round(session.final_score * 100)}%` : "Pendente"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => openSessionContent(session)}
+                          className="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold hover:bg-accent/90 transition-colors"
+                        >
+                          Ler Material
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

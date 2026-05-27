@@ -11,6 +11,18 @@ export default defineConfig({
     tanstackStart({ target: "node-server" }),
     viteReact(),
     tailwindcss(),
+    {
+      name: "stream-api",
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          if (req.method === 'POST' && req.originalUrl === '/api/stream-chapter') {
+            const { handleStreamChapter } = await import("./src/lib/stream-handler.mjs");
+            return handleStreamChapter(req, res);
+          }
+          next();
+        });
+      }
+    }
   ],
   server: {
     host: "0.0.0.0",

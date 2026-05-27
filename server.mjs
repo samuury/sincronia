@@ -150,10 +150,15 @@ async function writeFetchResponseToNode(response, res) {
 }
 
 // ───── server ────────────────────────────────────────────────────────────
+import { handleStreamChapter } from "./src/lib/stream-handler.mjs";
 
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+
+    if (req.method === 'POST' && url.pathname === '/api/stream-chapter') {
+      return handleStreamChapter(req, res);
+    }
 
     // 1) estáticos primeiro
     const served = await tryServeStatic(req, res, url.pathname);

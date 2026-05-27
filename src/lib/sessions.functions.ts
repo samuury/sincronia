@@ -68,7 +68,7 @@ export const createSession = createServerFn({ method: "POST" })
     // Check session limit (max 3 sessions per user unless unlimited_sessions is true)
     const { data: prof, error: profError } = await supabase
       .from("profiles")
-      .select("unlimited_sessions")
+      .select("unlimited_sessions, sessions_count")
       .eq("id", userId)
       .maybeSingle();
 
@@ -81,7 +81,7 @@ export const createSession = createServerFn({ method: "POST" })
         .eq("user_id", userId);
 
       if (countError) throw new Error(countError.message);
-      if (count !== null && count >= 3) {
+      if (count !== null && count + (prof?.sessions_count ?? 0) >= 3) {
         throw new Error("Você atingiu o limite de 3 estudos. Solicite permissão ao administrador para continuar.");
       }
     }
@@ -101,6 +101,42 @@ export const createSession = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id as string };
+  });
+
+export const consumeExtraUsage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    const { data: prof, error: profError } = await supabase
+      .from("profiles")
+      .select("unlimited_sessions, sessions_count")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profError) throw new Error(profError.message);
+
+    if (!prof?.unlimited_sessions) {
+      const { count, error: countError } = await supabase
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      if (countError) throw new Error(countError.message);
+      if (count !== null && count + (prof?.sessions_count ?? 0) >= 3) {
+        throw new Error("Você atingiu o limite de 3 estudos. Solicite permissão ao administrador para continuar.");
+      }
+    }
+
+    const newCount = (prof?.sessions_count ?? 0) + 1;
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ sessions_count: newCount })
+      .eq("id", userId);
+
+    if (updateError) throw new Error(updateError.message);
+
+    return { ok: true };
   });
 
 export const updateSessionRoute = createServerFn({ method: "POST" })
@@ -167,7 +203,7 @@ export const getSession = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!session) throw new Error("Sessão não encontrada.");
 
-    const [{ data: explanations }, { data: quizzes }] = await Promise.all([
+    const [{ data: explanations }, { data: quizzes }, { data: sub_explanations }] = await Promise.all([
       supabase
         .from("explanations")
         .select("*")
@@ -178,11 +214,18 @@ export const getSession = createServerFn({ method: "GET" })
         .select("*")
         .eq("session_id", data.id)
         .order("created_at", { ascending: true }),
+      supabase
+        .from("sub_explanations")
+        .select("*")
+        .eq("session_id", data.id)
+        .eq("concept", "__USER_NOTES__")
+        .maybeSingle(),
     ]);
     return {
       session,
       explanation: explanations?.[0] ?? null,
       quizzes: quizzes ?? [],
+      notes: sub_explanations?.content ?? "",
     };
   });
 
@@ -202,6 +245,28 @@ export const saveExplanation = createServerFn({ method: "POST" })
     await supabase.from("explanations").delete().eq("session_id", data.session_id);
     const { error } = await supabase.from("explanations").insert({
       session_id: data.session_id,
+      content: data.content,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const saveUserNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        session_id: z.string().uuid(),
+        content: z.string(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    await supabase.from("sub_explanations").delete().eq("session_id", data.session_id).eq("concept", "__USER_NOTES__");
+    const { error } = await supabase.from("sub_explanations").insert({
+      session_id: data.session_id,
+      concept: "__USER_NOTES__",
       content: data.content,
     });
     if (error) throw new Error(error.message);

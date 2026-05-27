@@ -1,5 +1,5 @@
 import React from "react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import { RichText } from "./RichText";
 
 export type Chapter = { title: string; subtitle?: string; body: string; references?: string[] };
@@ -33,22 +33,35 @@ export function ChapterViewer({
           </p>
         )}
       </div>
-      <div className="mt-6 whitespace-pre-wrap leading-relaxed text-foreground/85">
-        <RichText content={current?.body ?? ""} />
-      </div>
-      {current?.references && current.references.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-border bg-secondary/30 p-5">
-          <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-            <BookOpen className="h-3.5 w-3.5" /> Referências Bibliográficas
+
+      {!current?.body || current.body.trim() === "" ? (
+        <div className="mt-20 flex flex-col items-center justify-center text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-accent mb-4" />
+          <h3 className="text-xl font-bold text-accent">Escrevendo este capítulo...</h3>
+          <p className="mt-2 text-sm font-medium text-muted-foreground max-w-[250px]">
+            A IA está redigindo o conteúdo deste capítulo. Ele aparecerá aqui automaticamente em instantes.
           </p>
-          <ul className="mt-3 space-y-1.5">
-            {current.references.map((ref, i) => (
-              <li key={i} className="text-xs leading-relaxed text-foreground/70">
-                {ref}
-              </li>
-            ))}
-          </ul>
         </div>
+      ) : (
+        <>
+          <div className="mt-6 whitespace-pre-wrap leading-relaxed text-foreground/85">
+            <RichText content={current?.body ?? ""} />
+          </div>
+          {current?.references && current.references.length > 0 && (
+            <div className="mt-8 rounded-2xl border border-border bg-secondary/30 p-5">
+              <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                <BookOpen className="h-3.5 w-3.5" /> Referências Bibliográficas
+              </p>
+              <ul className="mt-3 space-y-1.5">
+                {current.references.map((ref, i) => (
+                  <li key={i} className="text-xs leading-relaxed text-foreground/70">
+                    {ref}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
       {chapterIndex === totalChapters - 1 && summary && (
         <div className="mt-8 rounded-2xl border-2 border-accent/40 bg-accent/5 p-5">
