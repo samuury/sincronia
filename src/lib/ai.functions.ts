@@ -781,7 +781,6 @@ Não crie listas, apenas texto corrido e amigável em Português do Brasil. Devo
   });
 
 export const generateExplanation = createServerFn({ method: "POST" })
-  .validator((d: any) => d)
   .handler(async () => {
     throw new Error("Essa rota foi descontinuada. Use a nova arquitetura de streaming no SincronIA.");
   });
