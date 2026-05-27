@@ -114,36 +114,77 @@ function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 pb-16">
-        <div className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)]">
-          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            Seu perfil
-          </p>
-          {p ? (
-            <>
-              <h2 className="mt-1 text-2xl font-extrabold text-primary">
-                {PROFILE_LABEL[p]}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {PROFILE_DESCRIPTION[p]}
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="mt-1 text-2xl font-extrabold">
-                Ainda não conhecemos você
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Faça o teste rápido de perfil pra gente entender como você
-                aprende.
-              </p>
-              <Link
-                to="/home"
-                className="btn-3d btn-3d-primary mt-4 inline-flex"
-              >
-                Começar
-              </Link>
-            </>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)]">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Seu perfil
+            </p>
+            {p ? (
+              <>
+                <h2 className="mt-1 text-2xl font-extrabold text-primary">
+                  {PROFILE_LABEL[p]}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {PROFILE_DESCRIPTION[p]}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="mt-1 text-2xl font-extrabold">
+                  Ainda não conhecemos você
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Faça o teste rápido de perfil pra gente entender como você
+                  aprende.
+                </p>
+                <Link
+                  to="/home"
+                  className="btn-3d btn-3d-primary mt-4 inline-flex"
+                >
+                  Começar
+                </Link>
+              </>
+            )}
+          </div>
+
+          <div className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)] flex flex-col justify-center">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-4">
+              Seu Desempenho (Média Geral)
+            </p>
+            {(() => {
+              const completed = sessionList.filter((s: any) => s.status === 'completed' && s.diag_score !== null && s.final_score !== null);
+              if (completed.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">Conclua sua primeira sessão de estudo para ver as estatísticas de evolução.</p>
+                );
+              }
+              const avgDiag = completed.reduce((acc: number, s: any) => acc + (s.diag_score || 0), 0) / completed.length;
+              const avgFinal = completed.reduce((acc: number, s: any) => acc + (s.final_score || 0), 0) / completed.length;
+              
+              return (
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <div className="flex justify-between text-sm font-bold mb-1.5">
+                      <span className="text-muted-foreground">Diagnóstico Inicial</span>
+                      <span>{Math.round(avgDiag * 100)}%</span>
+                    </div>
+                    <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-muted-foreground transition-all duration-1000" style={{ width: `${avgDiag * 100}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm font-bold mb-1.5">
+                      <span className="text-primary">Verificação Final</span>
+                      <span className="text-primary">{Math.round(avgFinal * 100)}%</span>
+                    </div>
+                    <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${avgFinal * 100}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         <div className="mt-8 flex items-center justify-between">
