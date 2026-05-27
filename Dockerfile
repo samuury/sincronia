@@ -37,6 +37,7 @@ USER app
 COPY --from=prod-deps --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/server.mjs ./server.mjs
+COPY --from=build --chown=app:app /app/src/lib/stream-handler.mjs ./src/lib/stream-handler.mjs
 COPY --from=build --chown=app:app /app/package.json ./package.json
 
 EXPOSE 3000
