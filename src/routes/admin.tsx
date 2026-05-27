@@ -69,13 +69,13 @@ function AdminDashboard() {
             
             // Ignora métricas de desempenho se o usuário tem permissão ilimitada
             if (unlimitedUsers.has(s.user_id)) return;
-            
-            if (s.final_score !== null) {
+            // Só computa para a Média de Evolução se o aluno fez AMBOS os quizzes (inicial e final)
+            // e ignoramos se a nota for zero (que geralmente indica quiz não feito/abandonado)
+            if (s.diag_score && s.final_score && Number(s.diag_score) > 0 && Number(s.final_score) > 0) {
               sumFinal += Number(s.final_score);
-              countWithFinal++;
-            }
-            if (s.diag_score !== null) {
               sumDiag += Number(s.diag_score);
+              // Como exigimos ambos, os contadores serão iguais
+              countWithFinal++;
               countWithDiag++;
             }
           });
