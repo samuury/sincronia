@@ -16,11 +16,13 @@ export function Mermaid({ chart }: { chart: string }) {
     const renderMermaid = async () => {
       try {
         let cleanChart = chart.replace(/```/g, '').trim();
-        // Protege contra erros de sintaxe (parênteses soltos gerados pela IA sem aspas)
-        cleanChart = cleanChart
-          .replace(/([A-Za-z0-9_]+)\[([^"\]]+)\]/g, '$1["$2"]')
-          .replace(/([A-Za-z0-9_]+)\(([^"\)]+)\)/g, '$1("$2")')
-          .replace(/([A-Za-z0-9_]+)\{([^"\}]+)\}/g, '$1{"$2"}');
+        // Conserta A -- texto --> B para A -->|texto| B
+        cleanChart = cleanChart.replace(/--\s*([^>\n-]+?)\s*-->/g, '-->|"$1"|');
+
+        // Adiciona aspas em labels unquoted para evitar erros de sintaxe.
+        // A regex [^"\]] garante que só vamos colocar aspas se já não houver aspas dentro, e evita quebrar strings que já estão corretas e possuem colchetes dentro.
+        cleanChart = cleanChart.replace(/([A-Za-z0-9_]+)\[([^"\]]+)\]/g, '$1["$2"]');
+        cleanChart = cleanChart.replace(/([A-Za-z0-9_]+)\{([^"\}]+)\}/g, '$1{"$2"}');
           
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
         const { svg } = await mermaid.render(id, cleanChart);

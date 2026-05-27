@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Minus, Plus, Play, Mic, AudioLines, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { createSession, upsertProfile, getSession, updateSessionRoute, confirmSessionCreation } from "@/lib/sessions.functions";
-import { generateStudyRoute, extractMaterial } from "@/lib/ai.functions";
+import { generateStudyRoute, extractMaterial, suggestStudyTime } from "@/lib/ai.functions";
 import { PROFILE_LABEL, type Profile } from "@/lib/profiles";
 import logo from "@/assets/logo-sincronia.png";
 
@@ -45,6 +45,7 @@ function Refinement() {
   const [chatInput, setChatInput] = useState("");
 
   const [routeData, setRouteData] = useState<{ suggestedTime: number; summary: string; chapters: string[] } | null>(null);
+  const [initialSuggestedTime, setInitialSuggestedTime] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [generatingRoute, setGeneratingRoute] = useState(false);
   const [didInitialGen, setDidInitialGen] = useState(false);
@@ -58,6 +59,7 @@ function Refinement() {
   const confirmSess = useServerFn(confirmSessionCreation);
   const upsert = useServerFn(upsertProfile);
   const genRoute = useServerFn(generateStudyRoute);
+  const suggestTime = useServerFn(suggestStudyTime);
   const extract = useServerFn(extractMaterial);
 
   useEffect(() => {
@@ -77,6 +79,7 @@ function Refinement() {
             if ((res.session as any).route_data) {
               setRouteData((res.session as any).route_data as any);
               setDays(((res.session as any).route_data as any).suggestedTime || 30);
+              setInitialSuggestedTime(((res.session as any).route_data as any).suggestedTime || null);
               setDidInitialGen(true);
             }
             setPending({
@@ -109,10 +112,31 @@ function Refinement() {
     checkSession();
   }, [nav, sessionId]);
 
+  async function suggestInitialTime() {
+    if (!pending) return;
+    setGeneratingRoute(true);
+    try {
+      const finalMotivo = motivo === "outros" ? motivoOutro.trim() || "outros" : motivo;
+      const r = await suggestTime({
+        data: {
+          materialText: pending.text ?? "",
+          topic: topic.trim() || pending.topic || "Material",
+          motivo: finalMotivo,
+        }
+      });
+      setDays(r.suggestedTime);
+      setInitialSuggestedTime(r.suggestedTime);
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setGeneratingRoute(false);
+    }
+  }
+
   useEffect(() => {
     if (pending && !didInitialGen) {
       setDidInitialGen(true);
-      generateRoute(true);
+      suggestInitialTime(); // Chama a nova função ultra-rápida no Gemini
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
@@ -191,7 +215,7 @@ function Refinement() {
     recognition.start();
   }
 
-  async function generateRoute(silent = false, overrideMotivo?: string) {
+  async function generateRoute(silent = false, overrideMotivo?: string, forceSuggest = false) {
     if (!pending) return;
     setGeneratingRoute(true);
     try {
@@ -204,10 +228,11 @@ function Refinement() {
           profile: pending.profile,
           motivo: finalMotivo,
           chatNote: chatInput.trim() || null,
+          targetMinutes: forceSuggest ? undefined : (typeof days === "number" ? days : undefined),
         }
       });
       setRouteData(r);
-      setDays(r.suggestedTime);
+      if (forceSuggest) setDays(r.suggestedTime); // Só altera o tempo da tela se for a sugestão inicial
       
       if (sessionId) {
         await updateRoute({ data: { session_id: sessionId, topic: topic.trim() || pending.topic, route_data: r } });
@@ -347,9 +372,6 @@ function Refinement() {
                   const val = e.target.value;
                   setMotivo(val);
                   setRouteData(null);
-                  if (val !== "outros") {
-                    generateRoute(true, val);
-                  }
                 }}
                 className="w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
               >
@@ -367,9 +389,7 @@ function Refinement() {
                     setRouteData(null);
                   }}
                   onBlur={() => {
-                    if (motivoOutro.trim()) {
-                      generateRoute(true, "outros");
-                    }
+                    // Removido auto-generateRoute no onBlur
                   }}
                   placeholder="Escreva seu motivo"
                   className="mt-3 w-full rounded-xl border-2 border-border bg-white px-4 py-3 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
@@ -394,6 +414,7 @@ function Refinement() {
                       const h = Number(e.target.value) || 0;
                       const m = days === "" ? 0 : Number(days) % 60;
                       setDays(h * 60 + m);
+                      setRouteData(null);
                     }}
                     className="w-12 text-center text-xl font-extrabold bg-transparent focus:outline-none"
                   />
@@ -411,6 +432,7 @@ function Refinement() {
                       const h = days === "" ? 0 : Math.floor(Number(days) / 60);
                       const m = Number(e.target.value) || 0;
                       setDays(h * 60 + m);
+                      setRouteData(null);
                     }}
                     className="w-12 text-center text-xl font-extrabold bg-transparent focus:outline-none"
                   />
@@ -421,7 +443,10 @@ function Refinement() {
                 <select
                   value=""
                   onChange={(e) => {
-                    if (e.target.value) setDays(Number(e.target.value));
+                    if (e.target.value) {
+                      setDays(Number(e.target.value));
+                      setRouteData(null);
+                    }
                   }}
                   className="h-[52px] cursor-pointer rounded-xl border-2 border-border bg-card px-4 text-sm font-bold text-foreground transition-colors hover:bg-secondary focus:border-primary focus:outline-none"
                 >
@@ -447,15 +472,16 @@ function Refinement() {
                   <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
                   Recalculando tempo...
                 </div>
-              ) : routeData?.suggestedTime ? (
-                <div className="mt-3 block w-fit rounded-xl border-2 border-accent/20 bg-accent/5 px-3 py-1.5 text-xs font-bold text-accent">
+              ) : initialSuggestedTime ? (
+                <div className="mt-3 flex w-fit items-center gap-2 rounded-xl border-2 border-accent/20 bg-accent/5 px-3 py-1.5 text-xs font-bold text-accent">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] text-white">✨</span>
                   A IA sugeriu {(() => {
-                    const h = Math.floor(routeData.suggestedTime / 60);
-                    const m = routeData.suggestedTime % 60;
-                    if (h > 0 && m > 0) return `${h} hora${h > 1 ? 's' : ''} e ${m} minuto${m > 1 ? 's' : ''}`;
-                    if (h > 0) return `${h} hora${h > 1 ? 's' : ''}`;
-                    return `${m} minuto${m > 1 ? 's' : ''}`;
-                  })()} para esse material.
+                    const h = Math.floor(initialSuggestedTime / 60);
+                    const m = initialSuggestedTime % 60;
+                    if (h > 0 && m > 0) return `${h} h e ${m} min`;
+                    if (h > 0) return `${h} h`;
+                    return `${m} min`;
+                  })()}
                 </div>
               ) : null}
             </div>

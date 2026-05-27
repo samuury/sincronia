@@ -1,14 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import { BookOpen, PencilRuler, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { getSession, saveExplanation, saveQuiz, saveSessionReport } from "@/lib/sessions.functions";
+import { getSession, saveExplanation, saveQuiz, saveSessionReport, consumeExtraUsage } from "@/lib/sessions.functions";
 import {
   generateDiagnostic,
-  generateExplanation,
+  generateExplanationOutline,
+  generateChapterBody,
   generateSubExplanation,
   generateVerificationQuiz,
   generateSessionReport,
@@ -40,6 +41,7 @@ import { StudySidebar } from "@/components/estudos/StudySidebar";
 import { ChapterViewer, type Chapter } from "@/components/estudos/ChapterViewer";
 import { ExerciseViewer, type Exercise } from "@/components/estudos/ExerciseViewer";
 import { DiagnosticQuiz } from "@/components/estudos/DiagnosticQuiz";
+import { NotesPanel } from "@/components/estudos/NotesPanel";
 
 export const Route = createFileRoute("/session/$id")({
   head: () => ({ meta: [{ title: "Sessão — SincronIA" }] }),
@@ -57,7 +59,7 @@ type Explanation = {
   concepts: string[];
 };
 
-type Stage = "loading" | "diag" | "learn" | "done";
+type Stage = "loading" | "diag-intro" | "diag" | "learn" | "done";
 
 function SessionPage() {
   const { id } = Route.useParams();
@@ -72,13 +74,16 @@ function SessionPage() {
 
   const getS = useServerFn(getSession);
   const genDiag = useServerFn(generateDiagnostic);
-  const genExp = useServerFn(generateExplanation);
+  const genExpOutline = useServerFn(generateExplanationOutline);
+  const genChapBody = useServerFn(generateChapterBody);
+  const generatingRef = useRef<string | null>(null);
   const genSub = useServerFn(generateSubExplanation);
   const genVer = useServerFn(generateVerificationQuiz);
   const saveExp = useServerFn(saveExplanation);
   const saveQ = useServerFn(saveQuiz);
   const genReport = useServerFn(generateSessionReport);
   const saveReportFn = useServerFn(saveSessionReport);
+  const consumeUsage = useServerFn(consumeExtraUsage);
 
   const [stage, setStage] = useState<Stage>("loading");
   const [busy, setBusy] = useState(false);
@@ -117,6 +122,9 @@ function SessionPage() {
   const [correctCount, setCorrectCount] = useState(0);
   const [sessionReport, setSessionReport] = useState<string | null>(null);
 
+  const [notesMode, setNotesMode] = useState<"closed" | "popup" | "docked">("closed");
+  const [notesContent, setNotesContent] = useState("");
+
   useEffect(() => {
     if (!ready) return;
     (async () => {
@@ -126,6 +134,8 @@ function SessionPage() {
         setTopic(r.session.topic);
         setProfile((r.session.profile_used ?? "sistematico") as Profile);
         
+        if (r.notes) setNotesContent(r.notes);
+
         if (r.session.status === "completed" && r.explanation) {
           setExplanation(r.explanation.content as Explanation);
           const vq = r.quizzes.find((q: any) => q.kind === "verification");
@@ -163,29 +173,137 @@ function SessionPage() {
           return;
         }
 
-        const routeData = (r.session as any).route_data as any;
-        const chapters = routeData?.chapters || [];
-
-        const d = await genDiag({
-          data: { materialText: r.session.material_text!, topic: r.session.topic, chapters },
-        });
-        
-        await saveQ({
-          data: {
-            session_id: id,
-            kind: "diagnostic",
-            questions: d.questions as any,
-          }
-        });
-
-        setDiag(d);
-        setDiagAnswers(new Array(d.questions.length).fill(-1));
-        setStage("diag");
+        // NOVO FLUXO: Em vez de auto-gerar, envia para a tela de diag-intro
+        setStage("diag-intro");
       } catch (e: any) {
         toast.error(e.message);
       }
     })();
   }, [ready, id]);
+
+  
+  // --- BACKGROUND GENERATION LOOP ---
+  useEffect(() => {
+    if (stage !== "learn" || !explanation || !explanation.sections) return;
+
+    const pendingIdx = explanation.sections.findIndex(s => !s.body || s.body.trim() === "");
+    if (pendingIdx === -1) return;
+
+    const section = explanation.sections[pendingIdx];
+    
+    // Evita múltiplas chamadas simultâneas para o mesmo capítulo
+    if (generatingRef.current === section.id || (section as any).id === generatingRef.current) return;
+    generatingRef.current = section.id || section.heading;
+
+    (async () => {
+      try {
+        const rawPlan = sessionStorage.getItem("sincronia:plan");
+        const plan = rawPlan ? JSON.parse(rawPlan) : { minutes: 30 };
+        const tempoMinutes = plan.minutes || 30;
+        
+        // Calcula a meta de caracteres dividida pelo número de seções (aproximadamente 500 chars/minuto no total)
+        const totalChars = tempoMinutes * 500;
+        const targetChars = Math.floor(totalChars / explanation.sections.length);
+        const payload = {
+          materialText: material,
+          topic,
+          profile,
+          diagScore: diagScore ?? 0.5,
+          chapterHeading: section.heading,
+          targetChars: targetChars
+        };
+
+        const res = await fetch("/api/stream-chapter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Erro na geração de streaming");
+
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("Sem stream reader");
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let lastUpdate = Date.now();
+
+        // Variável de buffer para agrupar pedaços de JSON que possam vir fragmentados
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          
+          // O último elemento pode ser uma linha incompleta, então guardamos no buffer
+          buffer = lines.pop() || "";
+
+          let updated = false;
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6).trim();
+              if (!dataStr || dataStr === "[DONE]") continue;
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+                  fullText += parsed.delta.text;
+                  updated = true;
+                }
+              } catch (e) {
+                // Se der erro no parse, o JSON da Anthropic pode estar fragmentado em múltiplas linhas? 
+                // Normalmente os eventos SSE mandam a linha completa. Ignoramos logs de parse temporários.
+              }
+            }
+          }
+
+          if (updated && Date.now() - lastUpdate > 100) {
+            setExplanation(prev => {
+              if (!prev) return prev;
+              const newSections = [...prev.sections];
+              newSections[pendingIdx] = {
+                ...newSections[pendingIdx],
+                body: fullText,
+                references: []
+              };
+              return { ...prev, sections: newSections };
+            });
+            lastUpdate = Date.now();
+          }
+        }
+
+        // Atualização final para garantir que todo o texto entrou
+        setExplanation(prev => {
+          if (!prev) return prev;
+          const newSections = [...prev.sections];
+          newSections[pendingIdx] = {
+            ...newSections[pendingIdx],
+            body: fullText,
+            references: []
+          };
+          
+          const newExp = { ...prev, sections: newSections };
+          
+          // Salva no Supabase em background para persistir o progresso
+          supabase.from("sessions").update({ explanation: newExp }).eq("id", id).then(() => {});
+          
+          return newExp;
+        });
+
+        generatingRef.current = null;
+      } catch (err) {
+        console.error("Falha ao gerar o capítulo", section.heading, err);
+        // Retry logic could be added here, but for now we let the user hit refresh or handle it
+      } finally {
+        generatingRef.current = null;
+      }
+    })();
+  }, [stage, explanation, material, topic, profile, diagScore, id, genChapBody, saveExp]);
+  // ----------------------------------
 
   const chapters = useMemo(() => {
     if (!explanation) return [];
@@ -200,6 +318,18 @@ function SessionPage() {
   const finished = answered.length > 0 && answered.every((a) => a);
 
   async function regenerateExplanation(options?: { newProfile?: Profile; reduce?: boolean; deepen?: boolean; note?: string }) {
+    if (!options?.reduce) {
+      if (!window.confirm("Essa ação criará uma aula nova e avançada, consumindo 1 uso do seu limite gratuito de 3 aulas. Deseja continuar?")) {
+        return;
+      }
+      try {
+        await consumeUsage();
+      } catch (err: any) {
+        toast.error(err.message || "Você atingiu o limite de aulas gratuitas.");
+        return;
+      }
+    }
+
     setShowProfileModal(false);
     setShowRegenModal(false);
     setShowReduceModal(false);
@@ -225,13 +355,14 @@ function SessionPage() {
 
       const activeProfile = options?.newProfile || profile;
 
-      const exp = await genExp({
+      const exp = await genExpOutline({
         data: {
           materialText: material,
           topic,
           profile: activeProfile,
           diagScore: diagScore ?? 0.5,
           plan,
+          tier: options?.reduce ? "fast" : "smart",
         },
       });
 
@@ -306,6 +437,64 @@ function SessionPage() {
     }
   }
 
+  async function startDiagnostic() {
+    setBusyText({ title: "Preparando suas perguntas...", desc: "Criando um quiz rápido para calibrar a aula." });
+    setBusy(true);
+    try {
+      const rawPlan = sessionStorage.getItem("sincronia:plan");
+      const plan = rawPlan ? JSON.parse(rawPlan) : undefined;
+      const chapters = plan?.chapters || [];
+
+      const d = await genDiag({
+        data: { materialText: material, topic, chapters, minutes: plan?.minutes },
+      });
+      
+      await saveQ({
+        data: {
+          session_id: id,
+          kind: "diagnostic",
+          questions: d.questions as any,
+        }
+      });
+
+      setDiag(d);
+      setDiagAnswers(new Array(d.questions.length).fill(-1));
+      setStage("diag");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function skipDiagnostic() {
+    setBusyText({ title: "Preparando sua aula...", desc: "A Inteligência Artificial está estruturando o material completo para você." });
+    setBusy(true);
+    try {
+      const rawPlan = sessionStorage.getItem("sincronia:plan");
+      const plan = rawPlan ? JSON.parse(rawPlan) : undefined;
+
+      const exp = await genExpOutline({
+        data: {
+          materialText: material,
+          topic,
+          profile,
+          diagScore: 0.5,
+          plan,
+        },
+      });
+      setExplanation(exp as any);
+      await saveExp({
+        data: { session_id: id, content: exp as any },
+      });
+      setStage("learn");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitDiagnostic() {
     if (!diag) return;
     const correct = diag.questions.reduce(
@@ -329,7 +518,7 @@ function SessionPage() {
       const rawPlan = sessionStorage.getItem("sincronia:plan");
       const plan = rawPlan ? JSON.parse(rawPlan) : undefined;
 
-      const exp = await genExp({
+      const exp = await genExpOutline({
         data: {
           materialText: material,
           topic,
@@ -533,7 +722,34 @@ function SessionPage() {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {stage === "diag" && diag ? (
+      {stage === "diag-intro" ? (
+        <main className="mx-auto flex max-w-3xl flex-col items-center justify-center px-6 py-32 text-center">
+          <div className="mb-8 inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-accent/10">
+            <span className="text-4xl">🎯</span>
+          </div>
+          <h2 className="mb-4 text-3xl font-extrabold text-accent md:text-4xl">Última etapa!</h2>
+          <p className="mx-auto mb-10 max-w-xl text-lg font-medium text-muted-foreground">
+            Queremos entender o que você já sabe (ou não sabe) sobre esse assunto. 
+            Isso ajuda nossa IA a personalizar a profundidade da explicação, reforçando suas fraquezas e pulando o que você já domina.
+          </p>
+          <div className="flex w-full flex-col items-center justify-center gap-4 sm:flex-row">
+            <button
+              onClick={startDiagnostic}
+              disabled={busy}
+              className="flex h-14 w-full items-center justify-center rounded-xl bg-accent px-8 text-base font-bold text-white transition-all hover:bg-accent/90 disabled:opacity-50 sm:w-auto"
+            >
+              Fazer o Quiz Rápido
+            </button>
+            <button
+              onClick={skipDiagnostic}
+              disabled={busy}
+              className="flex h-14 w-full items-center justify-center rounded-xl border-2 border-border bg-transparent px-8 text-base font-bold text-muted-foreground transition-all hover:border-accent hover:text-accent disabled:opacity-50 sm:w-auto"
+            >
+              Pular e Ir Direto para a Aula
+            </button>
+          </div>
+        </main>
+      ) : stage === "diag" && diag ? (
         <>
           <div className="absolute top-6 left-6">
             <Link to="/home" className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground">
@@ -611,7 +827,7 @@ function SessionPage() {
             </div>
           </header>
 
-          <div className="grid gap-8 md:grid-cols-[180px_1fr] md:items-start">
+          <div className={`grid gap-8 md:items-start ${notesMode === "docked" ? "md:grid-cols-[180px_1fr_320px]" : "md:grid-cols-[180px_1fr]"}`}>
             <StudySidebar
               onRegenerate={() => setShowRegenModal(true)}
               onReduce={() => setShowReduceModal(true)}
@@ -621,9 +837,10 @@ function SessionPage() {
               canUndo={!!previousExplanation}
               onRedo={handleRedo}
               canRedo={!!nextExplanation}
+              onOpenNotes={() => setNotesMode(notesMode === "closed" ? "popup" : "closed")}
             />
 
-            <section>
+            <section className="min-w-0">
               {busy ? (
                 <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in-95 duration-300">
                   <Loader2 className="h-10 w-10 animate-spin text-accent" />
@@ -713,6 +930,18 @@ function SessionPage() {
                 />
               )}
             </section>
+            
+            {notesMode === "docked" && (
+              <aside className="hidden md:block w-full">
+                <NotesPanel
+                  sessionId={id}
+                  content={notesContent}
+                  onContentChange={setNotesContent}
+                  mode={notesMode}
+                  onModeChange={setNotesMode}
+                />
+              </aside>
+            )}
           </div>
         </main>
       ) : null}
@@ -859,6 +1088,16 @@ function SessionPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {notesMode === "popup" && (
+        <NotesPanel
+          sessionId={id}
+          content={notesContent}
+          onContentChange={setNotesContent}
+          mode={notesMode}
+          onModeChange={setNotesMode}
+        />
       )}
     </div>
   );

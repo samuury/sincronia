@@ -64,6 +64,10 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+html {
+  font-size: 80%;
+}
+
 :root {
   --radius: 1rem;
   /* SincronIA DNA de cores — Off-white + Azul/Roxo (primárias) + Laranja/Verde/Amber/Coral (secundárias) */
