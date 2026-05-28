@@ -233,7 +233,7 @@ function AdminDashboard() {
         </div>
 
         {/* Cards de Estatísticas */}
-        <div className="grid gap-6 md:grid-cols-3 mb-10">
+        <div className="grid gap-6 md:grid-cols-2 mb-10">
           <div className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)]">
             <div className="flex items-center gap-3 text-primary mb-2">
               <Users className="h-5 w-5" />
@@ -250,27 +250,6 @@ function AdminDashboard() {
             </div>
             <p className="text-4xl font-extrabold text-foreground">{loading ? "..." : totalStudies}</p>
             <p className="text-xs font-bold text-muted-foreground mt-2">Total no Supabase</p>
-          </div>
-
-          <div className="rounded-3xl border-2 border-border bg-card p-6 shadow-[0_4px_0_0_var(--border)]">
-            <div className="flex items-center gap-3 text-success mb-3">
-              <Activity className="h-5 w-5" />
-              <h3 className="font-extrabold text-sm uppercase tracking-wide">Média de Evolução</h3>
-            </div>
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-4xl font-extrabold text-muted-foreground">{loading ? "..." : `${Math.round(averageDiagScore * 100)}%`}</p>
-                <p className="text-xs font-bold text-muted-foreground mt-1">Diagnóstico (Antes)</p>
-              </div>
-              <div className="text-3xl text-muted-foreground/30 font-bold mb-3">→</div>
-              <div className="text-right">
-                <p className="text-4xl font-extrabold text-success">{loading ? "..." : `${Math.round(averageScore * 100)}%`}</p>
-                <p className="text-xs font-bold text-muted-foreground mt-1">Verificação (Depois)</p>
-              </div>
-            </div>
-            <p className="text-xs font-bold text-muted-foreground mt-4 text-center border-t-2 border-dashed border-border/50 pt-3">
-              Média global da plataforma
-            </p>
           </div>
         </div>
 
