@@ -352,7 +352,7 @@ export const generateDiagnostic = createServerFn({ method: "POST" })
         {
           role: "system",
           content:
-            `Você cria um MICRO-DIAGNÓSTICO para medir o nível inicial do aluno sobre o assunto.\n\n${chaptersContext}IMPORTANTE: As perguntas devem ser ALTAMENTE DESAFIADORAS (nível avançado a especialista) para realmente testar se o aluno já domina o tema profundamente. Exija pensamento crítico, resolução de problemas complexos ou conhecimento avançado. Evite perguntas óbvias ou fáceis. Se o material for muito curto, gere perguntas conceituais difíceis sobre o tema. NUNCA faça perguntas de interpretação textual do próprio título. Responda APENAS JSON: {"questions":[{"q":"...","options":["A","B","C","D"],"answer":0,"why":"explicação curta"}]}`,
+            `Você cria um MICRO-DIAGNÓSTICO para medir o nível inicial do aluno sobre o assunto.\n\n${chaptersContext}IMPORTANTE: As perguntas devem ter um nível de dificuldade condizente com o material fornecido e o roteiro de estudos. Avalie os conhecimentos fundamentais da área, mas evite coisas excessivamente técnicas, específicas ou científicas se elas não forem o foco principal dos estudos a seguir. Se o material for muito curto, gere perguntas conceituais introdutórias sobre o tema. NUNCA faça perguntas de interpretação textual do próprio título. Responda APENAS JSON: {"questions":[{"q":"...","options":["A","B","C","D"],"answer":0,"why":"explicação curta"}]}`,
         },
         {
           role: "user",
