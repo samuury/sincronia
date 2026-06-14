@@ -59,19 +59,25 @@ export function SocraticDialogue({
       const decoder = new TextDecoder();
       let done = false;
       let text = "";
+      let buffer = "";
 
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        const chunkValue = decoder.decode(value, { stream: true });
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+        }
         
-        try {
-          const events = chunkValue.split('\n\n').filter(Boolean);
-          for (const ev of events) {
-            if (ev.startsWith('event: message_start')) continue;
-            if (ev.startsWith('event: content_block_delta')) {
-              const dataLine = ev.split('\n').find(l => l.startsWith('data: '));
-              if (dataLine) {
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || ""; // mantém o último pedaço incompleto
+        
+        for (const ev of parts) {
+          if (ev.trim() === '') continue;
+          
+          if (ev.includes('event: content_block_delta')) {
+            const dataLine = ev.split('\n').find(l => l.startsWith('data: '));
+            if (dataLine) {
+              try {
                 const data = JSON.parse(dataLine.replace('data: ', ''));
                 if (data.delta && data.delta.text) {
                   text += data.delta.text;
@@ -81,16 +87,13 @@ export function SocraticDialogue({
                     return newMsgs;
                   });
                 }
+              } catch (e) {
+                console.error("Erro no parse do chunk JSON:", dataLine);
               }
             }
+          } else if (ev.includes('event: error')) {
+             console.error("Erro da API:", ev);
           }
-        } catch (e) {
-          text += chunkValue;
-          setMessages(prev => {
-            const newMsgs = [...prev];
-            newMsgs[newMsgs.length - 1].content = text;
-            return newMsgs;
-          });
         }
       }
     } catch (e) {
