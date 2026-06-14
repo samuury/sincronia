@@ -150,7 +150,7 @@ async function writeFetchResponseToNode(response, res) {
 }
 
 // ───── server ────────────────────────────────────────────────────────────
-import { handleStreamChapter } from "./src/lib/stream-handler.mjs";
+import { handleStreamChapter, handleStreamSocratic } from "./src/lib/stream-handler.mjs";
 
 const server = createServer(async (req, res) => {
   try {
@@ -158,6 +158,9 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/stream-chapter') {
       return handleStreamChapter(req, res);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/stream-socratic') {
+      return handleStreamSocratic(req, res);
     }
 
     // 1) estáticos primeiro

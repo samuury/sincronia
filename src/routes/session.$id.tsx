@@ -42,6 +42,7 @@ import { ChapterViewer, type Chapter } from "@/components/estudos/ChapterViewer"
 import { ExerciseViewer, type Exercise } from "@/components/estudos/ExerciseViewer";
 import { DiagnosticQuiz } from "@/components/estudos/DiagnosticQuiz";
 import { NotesPanel } from "@/components/estudos/NotesPanel";
+import { SocraticDialogue } from "@/components/estudos/SocraticDialogue";
 
 export const Route = createFileRoute("/session/$id")({
   head: () => ({ meta: [{ title: "Sessão — SincronIA" }] }),
@@ -121,6 +122,7 @@ function SessionPage() {
   const [answered, setAnswered] = useState<boolean[]>([]);
   const [correctCount, setCorrectCount] = useState(0);
   const [sessionReport, setSessionReport] = useState<string | null>(null);
+  const [socraticCompleted, setSocraticCompleted] = useState<boolean[]>([]);
 
   const [notesMode, setNotesMode] = useState<"closed" | "popup" | "docked">("closed");
   const [notesContent, setNotesContent] = useState("");
@@ -883,35 +885,47 @@ function SessionPage() {
                       summary={explanation.summary}
                     />
 
-                    <div className="mt-6 grid grid-cols-[1fr_1.4fr] gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setChapter((c) => Math.max(0, c - 1))}
-                        disabled={chapter === 0}
-                        className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-border bg-card font-extrabold shadow-[0_4px_0_0_var(--border)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-40"
-                      >
-                        <ArrowLeft className="h-4 w-4" /> Anterior
-                      </button>
-                      {chapter < totalChapters - 1 ? (
+                    {(!current?.body || current.body.trim() === "") ? null : !socraticCompleted[chapter] ? (
+                      <SocraticDialogue
+                        chapterHeading={current.title}
+                        topic={topic}
+                        onComplete={() => {
+                          const newCompleted = [...socraticCompleted];
+                          newCompleted[chapter] = true;
+                          setSocraticCompleted(newCompleted);
+                        }}
+                      />
+                    ) : (
+                      <div className="mt-6 grid grid-cols-[1fr_1.4fr] gap-4">
                         <button
                           type="button"
-                          onClick={() => setChapter((c) => Math.min(totalChapters - 1, c + 1))}
-                          className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-accent bg-accent font-extrabold text-accent-foreground shadow-[0_4px_0_0_var(--accent-shadow)] transition-transform active:translate-y-1 active:shadow-none"
+                          onClick={() => setChapter((c) => Math.max(0, c - 1))}
+                          disabled={chapter === 0}
+                          className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-border bg-card font-extrabold shadow-[0_4px_0_0_var(--border)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-40"
                         >
-                          Próximo <ArrowRight className="h-4 w-4" />
+                          <ArrowLeft className="h-4 w-4" /> Anterior
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={goToExercises}
-                          disabled={busy}
-                          className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary font-extrabold text-primary-foreground shadow-[0_4px_0_0_var(--primary-shadow)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50"
-                        >
-                          {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Ir para exercícios" }
-                          {!busy && <ArrowRight className="h-4 w-4" />}
-                        </button>
-                      )}
-                    </div>
+                        {chapter < totalChapters - 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setChapter((c) => Math.min(totalChapters - 1, c + 1))}
+                            className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-accent bg-accent font-extrabold text-accent-foreground shadow-[0_4px_0_0_var(--accent-shadow)] transition-transform active:translate-y-1 active:shadow-none"
+                          >
+                            Próximo <ArrowRight className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={goToExercises}
+                            disabled={busy}
+                            className="flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary font-extrabold text-primary-foreground shadow-[0_4px_0_0_var(--primary-shadow)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50"
+                          >
+                            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : "Ir para exercícios" }
+                            {!busy && <ArrowRight className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </>
                 )
               ) : verify && (

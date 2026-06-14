@@ -118,3 +118,62 @@ Responda APENAS com o Markdown do capítulo. Não mande JSON. Português do Bras
     }
   });
 }
+
+export async function handleStreamSocratic(req, res) {
+  if (req.method !== 'POST') {
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  let body = '';
+  req.on('data', chunk => { body += chunk.toString(); });
+  req.on('end', async () => {
+    try {
+      const data = JSON.parse(body);
+      const rawKey = process.env.CLAUDE_API_KEY?.trim();
+      if (!rawKey) throw new Error("CLAUDE_API_KEY not configured");
+      const keys = rawKey.split(",").map(k => k.trim()).filter(Boolean);
+      const CLAUDE_MODEL = process.env.CLAUDE_MODEL?.trim() || "claude-3-5-sonnet-20241022";
+      const key = keys[Math.floor(Math.random() * keys.length)];
+
+      const payload = JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: 500,
+        system: data.systemPrompt,
+        messages: data.messages,
+        stream: true
+      });
+
+      const options = {
+        hostname: 'api.anthropic.com',
+        path: '/v1/messages',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      };
+
+      const anthropicReq = https.request(options, (anthropicRes) => {
+        anthropicRes.on('data', (chunk) => res.write(chunk));
+        anthropicRes.on('end', () => res.end());
+      });
+
+      anthropicReq.on('error', (e) => { console.error("[stream-handler] Socratic API Error:", e); res.end(); });
+      anthropicReq.write(payload);
+      anthropicReq.end();
+    } catch (err) {
+      console.error("[stream-handler] Socratic Error:", err);
+      res.statusCode = 500;
+      res.end();
+    }
+  });
+}
+
