@@ -4,7 +4,7 @@
 
 O aluno envia qualquer material (texto, PDF, foto de apostila), faz um quiz comportamental de 8 perguntas, e a IA gera uma trilha de estudo completa — aula em capítulos, exercícios, relatório de desempenho — tudo adaptado ao jeito que ele aprende.
 
-**Em produção:** https://sincroniahub.tech
+**Em produção**
 
 ---
 
