@@ -2,175 +2,111 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { profileGuideline, type Profile } from "./profiles";
 
-const MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.1-flash-lite";
-
 type ChatMsg = { role: "system" | "user" | "assistant"; content: any };
 
 async function callGateway(messages: ChatMsg[], opts: { json?: boolean; tier?: "fast" | "smart"; maxTokens?: number } = {}) {
   const tier = opts.tier || "fast";
 
-  if (tier === "smart") {
-    const rawKey = process.env.CLAUDE_API_KEY?.trim();
-    if (!rawKey) throw new Error("CLAUDE_API_KEY not configured");
-    const keys = rawKey.split(",").map(k => k.trim()).filter(Boolean);
-    const CLAUDE_MODEL = process.env.CLAUDE_MODEL?.trim() || "claude-3-5-sonnet-20241022";
+  const rawKey = process.env.CLAUDE_API_KEY?.trim();
+  if (!rawKey) throw new Error("CLAUDE_API_KEY not configured");
+  const keys = rawKey.split(",").map((k) => k.trim()).filter(Boolean);
 
-    console.log(`[callGateway/Claude] Iniciando chamada para o modelo ${CLAUDE_MODEL}...`);
-    const systemMsg = messages.find((m) => m.role === "system");
-    const contents = messages
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: Array.isArray(m.content)
-          ? m.content.map((p: any) =>
-              p.type === "image_url"
-                ? {
-                    type: "image",
-                    source: {
-                      type: "base64",
-                      media_type: p.image_url.url.split(";")[0].replace("data:", ""),
-                      data: p.image_url.url.split(",")[1],
-                    },
-                  }
-                : { type: "text", text: p.text ?? "" }
-            )
-          : [{ type: "text", text: m.content }],
-      }));
+  const model =
+    tier === "smart"
+      ? process.env.CLAUDE_MODEL?.trim() || "claude-3-5-sonnet-20241022"
+      : process.env.CLAUDE_FAST_MODEL?.trim() || "claude-haiku-4-5-20251001";
 
-    const body: any = {
-      model: CLAUDE_MODEL,
-      max_tokens: opts.maxTokens || 8192,
-      messages: contents,
-    };
-    if (systemMsg) body.system = systemMsg.content;
-    
-    const MAX_RETRIES = 3;
-    let delay = 1500;
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      const key = keys[Math.floor(Math.random() * keys.length)];
-      try {
-        console.log(`[callGateway/Claude] Aguardando fetch... (Tentativa ${attempt}/${MAX_RETRIES}) usando chave terminada em ...${key.slice(-4)}`);
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": key,
-            "anthropic-version": "2023-06-01"
-          },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const t = await res.text();
-          console.error(`[callGateway/Claude] Erro da API na tentativa ${attempt}:`, t);
-          if (res.status === 429 || res.status >= 500) {
-            if (attempt === MAX_RETRIES) throw new Error("Limite de uso atingido ou servidor instável. Tente novamente em instantes.");
-            await new Promise((r) => setTimeout(r, delay));
-            delay *= 2;
-            continue;
-          }
-          throw new Error(`Claude API ${res.status}: ${t}`);
-        }
-
-        const data = await res.json();
-        const text = data?.content?.[0]?.text as string;
-        console.log(`[callGateway/Claude] Tamanho do texto gerado: ${text?.length || 0} caracteres`);
-        return text;
-      } catch (error: any) {
-        if (attempt === MAX_RETRIES) throw error;
-        console.error(`[callGateway/Claude] Falha na tentativa ${attempt}:`, error.message);
-        await new Promise((r) => setTimeout(r, delay));
-        delay *= 2;
-      }
-    }
-    throw new Error("Não foi possível conectar com o Claude após múltiplas tentativas.");
+  console.log(`[callGateway/Claude/${tier.toUpperCase()}] Iniciando chamada para o modelo ${model}...`);
+  const systemMsg = messages.find((m) => m.role === "system");
+  let systemContent = systemMsg ? String(systemMsg.content) : "";
+  if (opts.json && !systemContent.includes("JSON")) {
+    systemContent = systemContent
+      ? `${systemContent}\n\nResponda ESTRITAMENTE em formato JSON válido, sem texto adicional.`
+      : "Responda ESTRITAMENTE em formato JSON válido, sem texto adicional.";
   }
 
-  // --- Lógica GEMINI ("fast") ---
-  const rawKey = process.env.GEMINI_API_KEY?.trim();
-  if (!rawKey) throw new Error("GEMINI_API_KEY not configured");
-  
-  // Suporta múltiplas chaves separadas por vírgula para balanceamento de carga
-  const keys = rawKey.split(",").map(k => k.trim()).filter(Boolean);
-
-  console.log(`[callGateway/Gemini] Iniciando chamada para o modelo ${MODEL}...`);
   const contents = messages
     .filter((m) => m.role !== "system")
     .map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: Array.isArray(m.content)
-        ? m.content.map((p: any) =>
-            p.type === "image_url"
-              ? {
-                  inline_data: {
-                    mime_type: p.image_url.url.split(";")[0].replace("data:", ""),
-                    data: p.image_url.url.split(",")[1],
-                  },
-                }
-              : { text: p.text ?? "" }
-          )
-        : [{ text: m.content }],
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: Array.isArray(m.content)
+        ? m.content.map((p: any) => {
+            if (p.type === "image_url") {
+              const url = p.image_url?.url || "";
+              const mediaType = url.split(";")[0].replace("data:", "") || "image/jpeg";
+              const data = url.split(",")[1] || "";
+              const isPdf = mediaType === "application/pdf";
+              return isPdf
+                ? {
+                    type: "document",
+                    source: {
+                      type: "base64",
+                      media_type: "application/pdf",
+                      data,
+                    },
+                  }
+                : {
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: mediaType,
+                      data,
+                    },
+                  };
+            }
+            return { type: "text", text: p.text ?? "" };
+          })
+        : [{ type: "text", text: String(m.content) }],
     }));
 
-  const systemMsg = messages.find((m) => m.role === "system");
-
+  const defaultMaxTokens = tier === "smart" ? 8192 : 4096;
   const body: any = {
-    contents,
-    ...(systemMsg
-      ? { system_instruction: { parts: [{ text: systemMsg.content }] } }
-      : {}),
-    ...(opts.json
-      ? { generationConfig: { response_mime_type: "application/json" } }
-      : {}),
+    model,
+    max_tokens: opts.maxTokens || defaultMaxTokens,
+    messages: contents,
   };
+  if (systemContent) body.system = systemContent;
 
   const MAX_RETRIES = 3;
   let delay = 1500;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    // Sorteia a chave a cada tentativa.
     const key = keys[Math.floor(Math.random() * keys.length)];
-    
     try {
-      console.log(`[callGateway/Gemini] Aguardando fetch... (Tentativa ${attempt}/${MAX_RETRIES}) usando chave terminada em ...${key.slice(-4)}`);
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
+      console.log(`[callGateway/Claude] Aguardando fetch... (Tentativa ${attempt}/${MAX_RETRIES}) modelo=${model} usando chave terminada em ...${key.slice(-4)}`);
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) {
         const t = await res.text();
-        console.error(`[callGateway/Gemini] Erro da API na tentativa ${attempt}:`, t);
-        
+        console.error(`[callGateway/Claude] Erro da API na tentativa ${attempt}:`, t);
         if (res.status === 429 || res.status >= 500) {
           if (attempt === MAX_RETRIES) throw new Error("Limite de uso atingido ou servidor instável. Tente novamente em instantes.");
-          // Exponential backoff
           await new Promise((r) => setTimeout(r, delay));
           delay *= 2;
           continue;
         }
-        
-        throw new Error(`Gemini API ${res.status}: ${t}`);
+        throw new Error(`Claude API ${res.status}: ${t}`);
       }
 
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text as string;
-      console.log(`[callGateway/Gemini] Tamanho do texto gerado: ${text?.length || 0} caracteres`);
+      const text = data?.content?.[0]?.text as string;
+      console.log(`[callGateway/Claude] Tamanho do texto gerado: ${text?.length || 0} caracteres`);
       return text;
-
     } catch (error: any) {
       if (attempt === MAX_RETRIES) throw error;
-      console.error(`[callGateway/Gemini] Falha de rede na tentativa ${attempt}:`, error.message);
+      console.error(`[callGateway/Claude] Falha na tentativa ${attempt}:`, error.message);
       await new Promise((r) => setTimeout(r, delay));
       delay *= 2;
     }
   }
-  
   throw new Error("Não foi possível conectar com a IA após múltiplas tentativas.");
 }
 
@@ -406,8 +342,28 @@ export const generateExplanationOutline = createServerFn({ method: "POST" })
     const tempoMinutes = data.plan?.minutes ?? (score < 0.34 ? 60 : score > 0.66 ? 30 : 45);
     const tempo = `${tempoMinutes} minutos`;
     
-    // Estimate chapters based on time. 1 chapter per ~10-15 minutes is a good heuristic.
-    const idealChapterCount = Math.max(1, Math.round(tempoMinutes / 12));
+    // Teto e piso estritos de capítulos com base no tempo total de estudo
+    let minAllowedChapters = 1;
+    let maxAllowedChapters = 3;
+    if (tempoMinutes <= 10) {
+      minAllowedChapters = 1;
+      maxAllowedChapters = 1;
+    } else if (tempoMinutes <= 20) {
+      minAllowedChapters = 1;
+      maxAllowedChapters = 2;
+    } else if (tempoMinutes <= 35) {
+      minAllowedChapters = 2;
+      maxAllowedChapters = 3;
+    } else if (tempoMinutes <= 60) {
+      minAllowedChapters = 3;
+      maxAllowedChapters = 4;
+    } else if (tempoMinutes <= 90) {
+      minAllowedChapters = 4;
+      maxAllowedChapters = 6;
+    } else {
+      minAllowedChapters = 5;
+      maxAllowedChapters = Math.min(10, Math.max(5, Math.round(tempoMinutes / 15)));
+    }
 
     const guideline = profileGuideline(
       data.profile as Profile,
@@ -418,7 +374,11 @@ export const generateExplanationOutline = createServerFn({ method: "POST" })
     
     const motivoText = data.plan?.motivo ? `\nMotivo do estudo: ${data.plan.motivo}.` : "";
     const extraContext = data.plan?.chatNote ? `\nObservação do aluno: "${data.plan.chatNote}".` : "";
-    const chaptersText = data.plan?.chapters?.length ? `\nESTRUTURA DE CAPÍTULOS OBRIGATÓRIA:\nVocê DEVE gerar exatamente as seguintes seções (sections), com estes títulos:\n${data.plan.chapters.map(c => `- ${c}`).join('\n')}` : `\nCrie aproximadamente ${idealChapterCount} capítulos para cobrir adequadamente este tópico considerando um tempo de estudo de ${tempo}.`;
+    
+    const hasSpecificChapters = Array.isArray(data.plan?.chapters) && data.plan.chapters.length > 0;
+    const chaptersText = hasSpecificChapters
+      ? `\nESTRUTURA DE CAPÍTULOS OBRIGATÓRIA (SEGUIDA À RISCA):\nVocê DEVE gerar exatamente as seguintes ${data.plan.chapters.length} seções (sections), com estes títulos exatos e NENHUMA A MAIS:\n${data.plan.chapters.map((c: string) => `- ${c}`).join('\n')}`
+      : `\nREQUISITO ESTRITO DE QUANTIDADE DE CAPÍTULOS:\nO aluno tem apenas ${tempo} para estudar. Portanto, você DEVE gerar entre ${minAllowedChapters} e NO MÁXIMO ${maxAllowedChapters} capítulos no total.\nSe o assunto tiver múltiplos fatos ou períodos históricos, você DEVE AGRUPÁ-LOS em blocos conceituais consolidados (ex: "Origens e Período Inicial", "Desenvolvimento e Consolidação", etc.). É ESTRITAMENTE PROIBIDO gerar mais de ${maxAllowedChapters} seções no JSON.`;
 
     const raw = await callGateway(
       [
@@ -429,6 +389,9 @@ export const generateExplanationOutline = createServerFn({ method: "POST" })
 Sua tarefa é gerar APENAS O ESQUELETO (Outline) do material didático OBRIGATORIAMENTE em JSON exato.
 NÃO ESCREVA O CORPO (body) DOS CAPÍTULOS. Deixe todos os campos "body" como strings vazias ("").
 NÃO COLOQUE REFERÊNCIAS AINDA. Deixe "references" como um array vazio ([]).
+
+REGRAS DE QUANTIDADE DE SEÇÕES:
+${hasSpecificChapters ? `- Siga RIGOROSAMENTE a lista de capítulos obrigatória fornecida (${data.plan.chapters.length} capítulos).` : `- O array "sections" DEVE conter no máximo ${maxAllowedChapters} elementos. NÃO crie capítulos curtos fragmentados. Prefira poucos capítulos consolidados e bem estruturados.`}
 
 Responda APENAS JSON no formato exato:
 {
@@ -466,6 +429,11 @@ Responda APENAS JSON no formato exato:
       throw new Error("Falha ao gerar a estrutura do material.");
     }
     
+    // Se a IA gerou mais capítulos do que o limite permitido para o tempo (e não havia roteiro fixo), limitamos ao teto
+    if (!hasSpecificChapters && result.sections.length > maxAllowedChapters) {
+      result.sections = result.sections.slice(0, maxAllowedChapters);
+    }
+
     // Ensure every section has an ID
     result.sections = result.sections.map((s, idx) => ({
       ...s,
@@ -548,6 +516,7 @@ ESTRUTURA DESTE CAPÍTULO:
 - ${diagramRule}
 - Marque entre [[ ]] de 1 a 4 termos importantes ao longo do texto.
 - Inclua de 1 a 3 fontes bibliográficas em "references" (não entram na contagem de caracteres).
+- Conclua SEMPRE o seu raciocínio com ponto final. NUNCA termine com frases incompletas ou cortadas.
 - REGRAS DE PENALIDADE: Se você escrever mais que ${data.targetChars + 500} caracteres, sua resposta será REJEITADA.
 
 Responda APENAS JSON no formato exato:
@@ -564,7 +533,7 @@ Português do Brasil.`,
           content: `Escreva APENAS o capítulo "${data.chapterHeading}" do tema ${data.topic}.\n\nMaterial base para pesquisa:\n${data.materialText.slice(0, 16_000)}`,
         },
       ],
-      { json: true, tier: data.tier ?? "smart", maxTokens: Math.ceil((data.targetChars * 1.5) / 4) }
+      { json: true, tier: data.tier ?? "smart", maxTokens: Math.min(4096, Math.max(1500, Math.ceil((data.targetChars * 2.5) / 4))) }
     );
     
     const result = parseJSON<{
@@ -673,7 +642,7 @@ Responda APENAS JSON no formato exato:
           content: `Material:\n${data.materialText.slice(0, 16_000)}`,
         },
       ],
-      { json: true } // Tier "fast" by default (Gemini)
+      { json: true } // Tier "fast" by default (Claude Haiku)
     );
     return parseJSON<{
       suggestedTime: number;

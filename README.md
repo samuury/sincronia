@@ -42,8 +42,8 @@ graph TD
     end
 
     subgraph "IAs Generativas"
-        H["Google Gemini<br/>(tier: fast)"]
-        I["Anthropic Claude<br/>(tier: smart)"]
+        H["Anthropic Claude Haiku<br/>(tier: fast)"]
+        I["Anthropic Claude Sonnet<br/>(tier: smart)"]
     end
 
     subgraph "Banco de Dados"
@@ -61,8 +61,8 @@ graph TD
     G -->|"Serve dist/"| A
 
     style A fill:#7c3aed,color:#fff
-    style H fill:#4285f4,color:#fff
-    style I fill:#d97706,color:#fff
+    style H fill:#d97706,color:#fff
+    style I fill:#b45309,color:#fff
     style J fill:#3ecf8e,color:#fff
 ```
 
@@ -70,7 +70,7 @@ graph TD
 
 ```mermaid
 flowchart LR
-    A["Home:<br/>Cola material"] --> B["Extração:<br/>Gemini processa"]
+    A["Home:<br/>Cola material"] --> B["Extração:<br/>Haiku processa"]
     B --> C["Refinamento:<br/>Tempo/Capítulos"]
     C --> D["Quiz Diagnóstico:<br/>Calibra nível"]
     D --> E["Outline (Fase 1):<br/>Gera esqueleto (3s)"]
@@ -115,7 +115,7 @@ Cada perfil gera um `profileGuideline` diferente que é injetado no prompt da IA
 | **UI** | React 19 + Tailwind CSS 4 + shadcn/ui (Radix) |
 | **Roteamento** | TanStack Router (file-based) |
 | **Banco** | Supabase (Postgres + Auth + RLS) |
-| **IA Fast** | Google Gemini (`gemini-2.5-flash` / configurável) |
+| **IA Fast** | Anthropic Claude (`claude-3-5-haiku` / configurável) |
 | **IA Smart** | Anthropic Claude (`claude-3-5-sonnet` / configurável) |
 | **Diagramas** | Mermaid.js (renderizado client-side) |
 | **Validação** | Zod (schemas em server functions) |
@@ -320,8 +320,7 @@ erDiagram
 - **Node 22** (https://nodejs.org) — rodar via npm
 - **Docker Desktop** — rodar via Docker
 - Conta no [Supabase](https://supabase.com) (URLs/keys do projeto)
-- Chave da API do [Google AI Studio](https://aistudio.google.com/apikey) (Gemini)
-- Chave da API da [Anthropic](https://console.anthropic.com/) (Claude)
+- Chave da API da [Anthropic](https://console.anthropic.com/) (Claude Sonnet + Haiku)
 
 ## Setup do `.env`
 
@@ -340,10 +339,10 @@ Variáveis necessárias:
 | `VITE_SUPABASE_SERVICE_ROLE_KEY` | Service role (necessária para `/admin`) |
 | `SUPABASE_URL` | Mesmo valor de `VITE_SUPABASE_URL` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Mesmo valor da service role |
-| `GEMINI_API_KEY` | Chave(s) da API do Gemini (separar por vírgula) |
-| `GEMINI_MODEL` | Ex: `gemini-2.5-flash` |
 | `CLAUDE_API_KEY` | Chave(s) da API do Claude (separar por vírgula) |
-| `CLAUDE_MODEL` | Ex: `claude-3-5-sonnet-20241022` |
+| `CLAUDE_MODEL` | Modelo smart (Ex: `claude-3-5-sonnet-20241022`) |
+| `CLAUDE_FAST_MODEL` | Modelo fast (Ex: `claude-3-5-haiku-20241022`) |
+| `CLAUDE_FAST_MODEL` | Modelo fast (Ex: `claude-haiku-4-5-20251001`) |
 
 O `.env` está no `.gitignore` — nunca commite chaves de verdade.
 

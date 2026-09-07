@@ -39,7 +39,7 @@ export async function handleStreamChapter(req, res) {
       const score = data.diagScore ?? 0.5;
       const level = score < 0.34 ? "iniciante" : score > 0.66 ? "avançado" : "intermediário";
 
-      const targetChars = data.targetChars || 3000;
+      const targetChars = Math.max(1800, data.targetChars || 3000);
       const targetWords = Math.floor(targetChars / 6);
       
       let densityRule = "Escreva parágrafos diretos e claros.";
@@ -63,6 +63,7 @@ ESTRUTURA DESTE CAPÍTULO:
 - ${diagramRule}
 - Marque entre [[ ]] de 1 a 4 termos importantes ao longo do texto.
 - No final do texto, crie uma seção "## Referências Bibliográficas" com 1 a 3 fontes (isso não entra na contagem principal).
+- Conclua SEMPRE o seu raciocínio com ponto final. NUNCA termine com frases incompletas ou cortadas.
 - REGRAS DE PENALIDADE: Se você escrever muito mais que ${targetChars + 500} caracteres, sua resposta será REJEITADA.
 
 Responda APENAS com o Markdown do capítulo. Não mande JSON. Português do Brasil.`;
@@ -76,7 +77,7 @@ Responda APENAS com o Markdown do capítulo. Não mande JSON. Português do Bras
 
       const payload = JSON.stringify({
         model: CLAUDE_MODEL,
-        max_tokens: Math.ceil((targetChars * 1.5) / 4),
+        max_tokens: Math.min(4096, Math.max(1500, Math.ceil((targetChars * 2.5) / 4))),
         system: systemPrompt,
         messages: messages,
         stream: true

@@ -203,7 +203,7 @@ function SessionPage() {
         
         // Calcula a meta de caracteres dividida pelo número de seções (aproximadamente 500 chars/minuto no total)
         const totalChars = tempoMinutes * 500;
-        const targetChars = Math.floor(totalChars / explanation.sections.length);
+        const targetChars = Math.max(1800, Math.floor(totalChars / explanation.sections.length));
         const payload = {
           materialText: material,
           topic,
@@ -854,7 +854,7 @@ function SessionPage() {
                   <p className="text-muted-foreground">Sem capítulos disponíveis.</p>
                 ) : (
                   <>
-                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 pb-4 -mx-6 px-6 md:mx-0 md:px-0 md:flex-wrap md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 pb-4 pt-1 -mx-6 px-6 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible md:pb-1 md:pt-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                       {chapters.map((c, i) => {
                         const active = chapter === i;
                         return (
