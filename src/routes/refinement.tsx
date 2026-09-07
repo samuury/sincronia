@@ -136,7 +136,7 @@ function Refinement() {
   useEffect(() => {
     if (pending && !didInitialGen) {
       setDidInitialGen(true);
-      suggestInitialTime(); // Chama a nova função ultra-rápida no Gemini
+      suggestInitialTime(); // Chama a nova função ultra-rápida no Claude Haiku
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
