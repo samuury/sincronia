@@ -55,7 +55,7 @@ type Quiz = {
 type Explanation = {
   title: string;
   intro: string;
-  sections: { heading: string; body: string; references?: string[] }[];
+  sections: { id?: string; heading: string; body: string; references?: string[] }[];
   summary: string;
   concepts: string[];
 };
@@ -288,12 +288,7 @@ function SessionPage() {
             references: []
           };
           
-          const newExp = { ...prev, sections: newSections };
-          
-          // Salva no Supabase em background para persistir o progresso
-          supabase.from("sessions").update({ explanation: newExp }).eq("id", id).then(() => {});
-          
-          return newExp;
+          return { ...prev, sections: newSections };
         });
 
         generatingRef.current = null;
