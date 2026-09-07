@@ -374,10 +374,11 @@ export const generateExplanationOutline = createServerFn({ method: "POST" })
     
     const motivoText = data.plan?.motivo ? `\nMotivo do estudo: ${data.plan.motivo}.` : "";
     const extraContext = data.plan?.chatNote ? `\nObservação do aluno: "${data.plan.chatNote}".` : "";
-    
-    const hasSpecificChapters = Array.isArray(data.plan?.chapters) && data.plan.chapters.length > 0;
+
+    const hasSpecificChapters = Array.isArray(data.plan?.chapters) && (data.plan?.chapters?.length ?? 0) > 0;
+    const safePlanChapters = data.plan?.chapters ?? [];
     const chaptersText = hasSpecificChapters
-      ? `\nESTRUTURA DE CAPÍTULOS OBRIGATÓRIA (SEGUIDA À RISCA):\nVocê DEVE gerar exatamente as seguintes ${data.plan.chapters.length} seções (sections), com estes títulos exatos e NENHUMA A MAIS:\n${data.plan.chapters.map((c: string) => `- ${c}`).join('\n')}`
+      ? `\nESTRUTURA DE CAPÍTULOS OBRIGATÓRIA (SEGUIDA À RISCA):\nVocê DEVE gerar exatamente as seguintes ${safePlanChapters.length} seções (sections), com estes títulos exatos e NENHUMA A MAIS:\n${safePlanChapters.map((c: string) => `- ${c}`).join('\n')}`
       : `\nREQUISITO ESTRITO DE QUANTIDADE DE CAPÍTULOS:\nO aluno tem apenas ${tempo} para estudar. Portanto, você DEVE gerar entre ${minAllowedChapters} e NO MÁXIMO ${maxAllowedChapters} capítulos no total.\nSe o assunto tiver múltiplos fatos ou períodos históricos, você DEVE AGRUPÁ-LOS em blocos conceituais consolidados (ex: "Origens e Período Inicial", "Desenvolvimento e Consolidação", etc.). É ESTRITAMENTE PROIBIDO gerar mais de ${maxAllowedChapters} seções no JSON.`;
 
     const raw = await callGateway(
@@ -391,7 +392,7 @@ NÃO ESCREVA O CORPO (body) DOS CAPÍTULOS. Deixe todos os campos "body" como st
 NÃO COLOQUE REFERÊNCIAS AINDA. Deixe "references" como um array vazio ([]).
 
 REGRAS DE QUANTIDADE DE SEÇÕES:
-${hasSpecificChapters ? `- Siga RIGOROSAMENTE a lista de capítulos obrigatória fornecida (${data.plan.chapters.length} capítulos).` : `- O array "sections" DEVE conter no máximo ${maxAllowedChapters} elementos. NÃO crie capítulos curtos fragmentados. Prefira poucos capítulos consolidados e bem estruturados.`}
+${hasSpecificChapters ? `- Siga RIGOROSAMENTE a lista de capítulos obrigatória fornecida (${safePlanChapters.length} capítulos).` : `- O array "sections" DEVE conter no máximo ${maxAllowedChapters} elementos. NÃO crie capítulos curtos fragmentados. Prefira poucos capítulos consolidados e bem estruturados.`}
 
 Responda APENAS JSON no formato exato:
 {
@@ -478,12 +479,13 @@ export const generateChapterBody = createServerFn({ method: "POST" })
     const targetWords = Math.floor(data.targetChars / 6);
     
     let densityRule = "DETALHADO. Explore o conceito com profundidade e contexto.";
+    let bodyExampleRule = "Conteúdo detalhado com exemplos e marcação de [[conceitos]].";
+    let diagramRule = "NÃO substitua texto por diagrama. Mas inclua diagramas Markdown ou Mermaid se ajudarem na compreensão visual.";
+
     if (data.targetChars <= 3500) {
       densityRule = "ESTRITAMENTE CONCISO E DIRETO. O alvo deste capítulo é curto. Vá direto ao ponto, evite enrolação e sumarize os conceitos.";
       bodyExampleRule = "Texto conciso, indo direto à essência, com 1 exemplo claro.";
     }
-    let bodyExampleRule = "Conteúdo detalhado com exemplos e marcação de [[conceitos]].";
-    let diagramRule = "NÃO substitua texto por diagrama. Mas inclua diagramas Markdown ou Mermaid se ajudarem na compreensão visual.";
 
     if (data.targetChars <= 1500) {
       densityRule = "RESUMIDO. O alvo deste capítulo é curto. Seja objetivo e não enrole.";

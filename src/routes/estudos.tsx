@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ArrowLeft, BookOpen, PencilRuler, Loader2, ArrowRight } from "lucide-react";
 import {
-  generateExplanation,
+  generateExplanationOutline,
   generateVerificationQuiz,
   generateDiagnostic,
 } from "@/lib/ai.functions";
@@ -33,7 +33,7 @@ const CACHE_KEY = "sincronia:estudos:cache";
 
 function Estudos() {
   const nav = useNavigate();
-  const genExp = useServerFn(generateExplanation);
+  const genExp = useServerFn(generateExplanationOutline);
   const genVer = useServerFn(generateVerificationQuiz);
   const genDiag = useServerFn(generateDiagnostic);
 
@@ -81,12 +81,12 @@ function Estudos() {
           topic: pToUse.topic ?? "Material",
           profile: (pToUse.profile ?? "sistematico") as Profile,
           diagScore: pToUse.diagScore ?? 0.5,
-          plan,
+          plan: plan ?? undefined,
         },
       });
       const chs: Chapter[] = [
         { title: exp.title, subtitle: "Introdução", body: exp.intro },
-        ...exp.sections.map((s) => ({ title: s.heading, body: s.body, references: s.references })),
+        ...exp.sections.map((s) => ({ title: s.heading, body: s.body, references: s.references ?? [] })),
       ];
       chs.forEach(c => {
          c.title = c.title.replace(/^(Capítulo|Cap)\s*\d+[\:\-\.]\s*/i, "").trim();
