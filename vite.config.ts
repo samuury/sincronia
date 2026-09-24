@@ -19,6 +19,10 @@ export default defineConfig({
             const { handleStreamChapter } = await import("./src/lib/stream-handler.mjs");
             return handleStreamChapter(req, res);
           }
+          if (req.method === 'POST' && req.originalUrl === '/api/stream-socratic') {
+            const { handleStreamSocratic } = await import("./src/lib/stream-handler.mjs");
+            return handleStreamSocratic(req, res);
+          }
           next();
         });
       }
