@@ -8,19 +8,52 @@ export type Message = {
 };
 
 export function SocraticDialogue({
+  sessionId,
+  chapterIndex,
   chapterHeading,
   topic,
   onComplete,
 }: {
+  sessionId: string;
+  chapterIndex: number;
   chapterHeading: string;
   topic: string;
   onComplete: () => void;
 }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const storageKey = `sincronia:socratic-dialog:${sessionId}:${chapterIndex}`;
+
+  const sanitizeStoredMessages = (messages: unknown): Message[] => {
+    if (!Array.isArray(messages)) return [];
+    return messages.filter((msg): msg is Message => {
+      return !!msg && typeof msg === "object" && typeof (msg as Message).role === "string" && typeof (msg as Message).content === "string" && (msg as Message).content.trim().length > 0;
+    });
+  };
+
+  const readStoredState = (): { started: boolean; messages: Message[] } => {
+    if (typeof window === "undefined") return { started: false, messages: [] };
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) return { started: false, messages: [] };
+      const parsed = JSON.parse(raw);
+      return {
+        started: Boolean(parsed?.started),
+        messages: sanitizeStoredMessages(parsed?.messages),
+      };
+    } catch {
+      return { started: false, messages: [] };
+    }
+  };
+
+  const persistState = (nextMessages: Message[], started = true) => {
+    if (typeof window === "undefined") return;
+    sessionStorage.setItem(storageKey, JSON.stringify({ started, messages: nextMessages }));
+  };
+
+  const [messages, setMessages] = useState<Message[]>(() => readStoredState().messages);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const hasStartedRef = useRef(false);
+  const hasStartedRef = useRef(readStoredState().started);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -29,17 +62,41 @@ export function SocraticDialogue({
   }, [messages]);
 
   useEffect(() => {
-    if (!hasStartedRef.current) {
-      hasStartedRef.current = true;
-      triggerSocratic([
-        { role: "user", content: "Inicie o diálogo socrático sobre este capítulo com uma pergunta provocativa." }
-      ]);
+    const storedState = readStoredState();
+
+    if (hasStartedRef.current) {
+      if (messages.length === 0 && storedState.messages.length > 0) {
+        setMessages(storedState.messages);
+      }
+      return;
     }
-  }, [chapterHeading]);
+
+    if (storedState.started) {
+      hasStartedRef.current = true;
+      if (storedState.messages.length > 0) {
+        setMessages(storedState.messages);
+      } else {
+        setMessages([{ role: "assistant", content: "Pensando..." }]);
+      }
+      return;
+    }
+
+    hasStartedRef.current = true;
+    const loadingMessage = [{ role: "assistant", content: "Pensando..." }];
+    setMessages(loadingMessage);
+    persistState(loadingMessage, true);
+    triggerSocratic([
+      { role: "user", content: "Inicie o diálogo socrático sobre este capítulo com uma pergunta provocativa." }
+    ]);
+  }, [chapterHeading, storageKey]);
 
   const triggerSocratic = async (msgs: Message[]) => {
     setIsGenerating(true);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => {
+      const next = [...prev, { role: "assistant", content: "" }];
+      persistState(next, true);
+      return next;
+    });
 
     try {
       const response = await fetch("/api/stream-socratic", {
@@ -84,6 +141,7 @@ export function SocraticDialogue({
                   setMessages(prev => {
                     const newMsgs = [...prev];
                     newMsgs[newMsgs.length - 1].content = text;
+                    persistState(newMsgs, true);
                     return newMsgs;
                   });
                 }
@@ -100,7 +158,9 @@ export function SocraticDialogue({
       console.error(e);
       setMessages((prev) => {
         const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1].content = "Ocorreu um erro ao gerar a reflexão. Você pode tentar novamente ou avançar.";
+        const message = "Ocorreu um erro ao gerar a reflexão. Você pode tentar novamente ou avançar.";
+        newMsgs[newMsgs.length - 1].content = message;
+        persistState(newMsgs, true);
         return newMsgs;
       });
     } finally {
@@ -113,6 +173,7 @@ export function SocraticDialogue({
     
     const newMsgs: Message[] = [...messages, { role: "user", content: input }];
     setMessages(newMsgs);
+    persistState(newMsgs, true);
     setInput("");
     triggerSocratic(newMsgs);
   };
