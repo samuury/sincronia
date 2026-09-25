@@ -115,17 +115,48 @@ function SessionPage() {
   const [verScore, setVerScore] = useState<number | null>(null);
 
   // Estados da interface baseada em capítulos
+  const chapterStorageKey = useMemo(() => `sincronia:chapter:${id}`, [id]);
   const [mode, setMode] = useState<"aula" | "exercicios">("aula");
-  const [chapter, setChapter] = useState(0);
+  const [chapter, setChapter] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    try {
+      const raw = sessionStorage.getItem(chapterStorageKey);
+      const nextChapter = Number(raw);
+      return Number.isFinite(nextChapter) && nextChapter >= 0 ? nextChapter : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [exIndex, setExIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState<boolean[]>([]);
   const [correctCount, setCorrectCount] = useState(0);
   const [sessionReport, setSessionReport] = useState<string | null>(null);
-  const [socraticCompleted, setSocraticCompleted] = useState<boolean[]>([]);
+  const socraticStorageKey = useMemo(() => `sincronia:socratic:${id}`, [id]);
+  const [socraticCompleted, setSocraticCompleted] = useState<boolean[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = sessionStorage.getItem(socraticStorageKey) ?? "[]";
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (!id) return;
+    sessionStorage.setItem(socraticStorageKey, JSON.stringify(socraticCompleted));
+  }, [id, socraticCompleted, socraticStorageKey]);
 
   const [notesMode, setNotesMode] = useState<"closed" | "popup" | "docked">("closed");
   const [notesContent, setNotesContent] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(chapterStorageKey, String(chapter));
+    }
+  }, [chapter, chapterStorageKey]);
 
   useEffect(() => {
     if (!ready) return;
@@ -882,6 +913,8 @@ function SessionPage() {
 
                     {(!current?.body || current.body.trim() === "") ? null : !socraticCompleted[chapter] ? (
                       <SocraticDialogue
+                        sessionId={id}
+                        chapterIndex={chapter}
                         chapterHeading={current.title}
                         topic={topic}
                         onComplete={() => {
